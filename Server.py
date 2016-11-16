@@ -5,6 +5,21 @@
 
 from socket import *
 import threading
+import shlex
+
+DEFAULT_PORT = 9966
+
+EOM = "\r\n\r\n"
+
+LOGIN_KEYWORD = "LOGIN"
+AG_KEYWORD = "AG"
+SG_KEYWORD = "SG"
+RG_KEYWORD = "RG"
+LOGOUT_KEYWORD = "LOGOUT"
+ERROR_KEYWORD = "ERROR"
+
+LOGOUT_SND = " 'Logging you out from the server.' "
+NOCMD_SND = " 0 'That is not a recognized command.' "
 
 def removeThread(threadID):
     arrayLock.acquire()
@@ -23,6 +38,7 @@ class ConnThread (threading.Thread):
         self.socket = socket
         self.ip = ip
         self.port = port
+        self.identity = "Thread" + str(self.threadID) + "@" + str(self.ip) + ":" + str(self.port)
 
     # This is what functionality the thread will perform while it's alive.
     def run(self):
@@ -30,19 +46,58 @@ class ConnThread (threading.Thread):
         keepRunning = True
         try:
             while(keepRunning):
-                dataRcv = self.socket.recv(1024)
-                #print(dataRcv)
-                self.socket.send(str(self.threadID).encode("UTF-8"))
+                dataArgs = []
+
+                # Receive data until an EOM is found
+                while(EOM not in dataArgs):
+                    dataRcv = self.socket.recv(1024)
+                    dataRcv = dataRcv.decode()
+                    #print(dataRcv)
+                    #self.socket.send(str(self.threadID).encode("UTF-8"))
+                    # Split the arguments, keeping quoted arguments together
+                    data = shlex.split(dataRcv)
+                    # Append the arguments to dataArgs
+                    # This way, it will keep accepting arguments until an EOM is found
+                    for i in data:
+                        dataArgs.append(i)
+                    #print(dataArgs)
+
+                # EOM found, search for arguments
+                if(dataArgs[0] == LOGIN_KEYWORD):
+                    # Perform login operations
+                    self.socket.send((LOGIN_KEYWORD + " " + EOM).encode("UTF-8"))
+                    print("Login received from " + self.identity)
+                elif(dataArgs[0] == AG_KEYWORD):
+                    # Perform ag operations
+                    self.socket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
+                elif(dataArgs[0] == SG_KEYWORD):
+                    # Perform sg operations
+                    self.socket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
+                elif(dataArgs[0] == RG_KEYWORD):
+                    # Perform rg operations
+                    self.socket.send((RG_KEYWORD + " " + EOM).encode("UTF-8"))
+                elif(dataArgs[0] == LOGOUT_KEYWORD):
+                    # Perform logout operations
+                    self.socket.send((LOGOUT_KEYWORD + LOGOUT_SND + EOM).encode("UTF-8"))
+                    self.socket.close()
+                    print("Client from " + self.identity + " has disconnected.")
+                    keepRunning = False
+                else:
+                    # Print non-recognized keyword
+                    self.socket.send(ERROR_KEYWORD + NOCMD_SND + EOM)
+
         except (ConnectionAbortedError, ConnectionResetError):
-            print("Client from Thread" + str(self.threadID) + "@" + str(self.ip) + ":" + str(self.port) + " has disconnected.")
+            # If a client closes without using the logout functionality
+            self.socket.close()
+            print("Client from " + self.identity + " has disconnected unexpectedly.")
+
+        # Client disconnected, remove thread from array of active threads
         removeThread(self.threadID)
     # End of run method, thread automatically ends
 
 
 
-# Server startup begins here
-
-DEFAULT_PORT = 9966
+# ***Server startup begins here***
 
 # Prepare the socket
 serverPort = DEFAULT_PORT
