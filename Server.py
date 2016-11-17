@@ -2,14 +2,20 @@
 # Rahul Verma
 # Joshua Ethridge
 # Harrison Termotto
+#
+# ERRORS:
+# 0     Command not found
+# 1     Login invalid
 
 from socket import *
 import threading
 import shlex
+import os
+import signal
 
 DEFAULT_PORT = 9966
 
-EOM = "\r\n\r\n"
+EOM = "'\r\n\r\n'"
 
 LOGIN_KEYWORD = "LOGIN"
 AG_KEYWORD = "AG"
@@ -21,6 +27,21 @@ ERROR_KEYWORD = "ERROR"
 LOGOUT_SND = " 'Logging you out from the server.' "
 NOCMD_SND = " 0 'That is not a recognized command.' "
 
+USER_FILE = "users.txt"
+
+# ***Persistence functionality starts here***
+if os.path.exists(USER_FILE):
+    userFile = open(USER_FILE, "r+")
+else:
+    userFile = open(USER_FILE, "w+")
+users = []
+usersLock = threading.Lock()
+for i in userFile:
+    users.append(userFile.readline())
+
+# ***Helper methods start here***
+
+# This method removes a thread from the array of threads
 def removeThread(threadID):
     arrayLock.acquire()
     for i in threads:
@@ -29,6 +50,36 @@ def removeThread(threadID):
             break
     arrayLock.release()
 
+# This is a method which will handle a client logging in to the server
+def clientLogin(socket, identity, args):
+    print("Login received from " + identity)
+    if not(args[1].isdigit()) or int(args[1]) == -1:
+        print("Invalid login from " + identity)
+        socket.send((ERROR_KEYWORD + " 1 'Login invalid' " + EOM).encode("UTF-8"))
+        return
+    userFound = False
+    for i in users:
+        if int(i) == int(args[1]):
+            userFound = True
+    if not(userFound):
+        usersLock.acquire()
+        users.append(args[1])
+        usersLock.release()
+    socket.send((LOGIN_KEYWORD + " " + args[1] + " " + EOM).encode("UTF-8"))
+    print("Valid login from " + identity)
+
+
+# This method safetly quits the server, closing all open files, threads, and such.
+def quitServer():
+    print("Quitting server!")
+    userFile.close()
+    for i in threads:
+        i.socket.send(("Server shutting down. Goodbye.").encode("UTF-8"))
+        i.socket.close()
+
+
+# ***This is the thread object***
+# When Thread.start() is run, the run method will run. Upon return of the run method, the thread dies.
 class ConnThread (threading.Thread):
 
     # This is the constructor for the thread.
@@ -49,7 +100,7 @@ class ConnThread (threading.Thread):
                 dataArgs = []
 
                 # Receive data until an EOM is found
-                while(EOM not in dataArgs):
+                while(shlex.split(EOM)[0] not in dataArgs):
                     dataRcv = self.socket.recv(1024)
                     dataRcv = dataRcv.decode()
                     #print(dataRcv)
@@ -65,8 +116,7 @@ class ConnThread (threading.Thread):
                 # EOM found, search for arguments
                 if(dataArgs[0] == LOGIN_KEYWORD):
                     # Perform login operations
-                    self.socket.send((LOGIN_KEYWORD + " " + EOM).encode("UTF-8"))
-                    print("Login received from " + self.identity)
+                    clientLogin(self.socket, self.identity, dataArgs)
                 elif(dataArgs[0] == AG_KEYWORD):
                     # Perform ag operations
                     self.socket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
@@ -115,6 +165,8 @@ arrayLock = threading.Lock()
 runServer = True
 print("Beginning server.")
 print("Listening on port " + str(serverPort))
+
+# Functionality loop
 while runServer:
     serverSocket.listen(1)
 
@@ -131,3 +183,4 @@ while runServer:
 
     # Start the thread
     thread.start()
+quitServer()
