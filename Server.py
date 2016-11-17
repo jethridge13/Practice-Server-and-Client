@@ -37,7 +37,7 @@ serverRunning = False
 # ***Persistence functionality starts here***
 if os.path.exists(USER_FILE):
     print("User file found! Loading users...")
-    userFile = open(USER_FILE, "r+")
+    userFile = open(USER_FILE, "r")
 else:
     print("User file not found. Creating user file.")
     userFile = open(USER_FILE, "w+")
@@ -46,6 +46,7 @@ usersLock = threading.Lock()
 for i in userFile:
     userId = int(i)
     users.append(userId)
+userFile.close()
 
 # ***Helper methods start here***
 
@@ -72,8 +73,10 @@ def clientLogin(socket, identity, args):
     if not(userFound):
         usersLock.acquire()
         users.append(args[1])
+        userFile = open(USER_FILE, "a")
         userFile.write(args[1])
         userFile.write("\n")
+        userFile.close()
         usersLock.release()
         print("New user found. Added user " + str(args[1]))
     socket.send((LOGIN_KEYWORD + " " + args[1] + " " + EOM).encode("UTF-8"))
@@ -83,7 +86,6 @@ def clientLogin(socket, identity, args):
 # This method safetly quits the server, closing all open files, threads, and such.
 def quitServer():
     print("Quitting server!")
-    userFile.close()
     for i in threads:
         print("Closing " + i.identity)
         i.socket.send(("Server shutting down. Goodbye.").encode("UTF-8"))
