@@ -12,6 +12,8 @@ import threading
 import shlex
 import os
 import signal
+import select
+import sys
 
 DEFAULT_PORT = 9966
 
@@ -23,21 +25,27 @@ SG_KEYWORD = "SG"
 RG_KEYWORD = "RG"
 LOGOUT_KEYWORD = "LOGOUT"
 ERROR_KEYWORD = "ERROR"
+SD_KEYWORD = "SD"
 
 LOGOUT_SND = " 'Logging you out from the server.' "
 NOCMD_SND = " 0 'That is not a recognized command.' "
 
 USER_FILE = "users.txt"
 
+serverRunning = False
+
 # ***Persistence functionality starts here***
 if os.path.exists(USER_FILE):
+    print("User file found! Loading users...")
     userFile = open(USER_FILE, "r+")
 else:
+    print("User file not found. Creating user file.")
     userFile = open(USER_FILE, "w+")
 users = []
 usersLock = threading.Lock()
 for i in userFile:
-    users.append(userFile.readline())
+    userId = int(i)
+    users.append(userId)
 
 # ***Helper methods start here***
 
@@ -64,7 +72,10 @@ def clientLogin(socket, identity, args):
     if not(userFound):
         usersLock.acquire()
         users.append(args[1])
+        userFile.write(args[1])
+        userFile.write("\n")
         usersLock.release()
+        print("New user found. Added user " + str(args[1]))
     socket.send((LOGIN_KEYWORD + " " + args[1] + " " + EOM).encode("UTF-8"))
     print("Valid login from " + identity)
 
@@ -74,12 +85,19 @@ def quitServer():
     print("Quitting server!")
     userFile.close()
     for i in threads:
+        print("Closing " + i.identity)
         i.socket.send(("Server shutting down. Goodbye.").encode("UTF-8"))
         i.socket.close()
+    loginThread.serverSocket.close()
+    sys.exit(0)
+
+def signalHandler(signal, frame):
+    print("TEST")
 
 
 # ***This is the thread object***
 # When Thread.start() is run, the run method will run. Upon return of the run method, the thread dies.
+# This thread is to handle listening to the various clients
 class ConnThread (threading.Thread):
 
     # This is the constructor for the thread.
@@ -132,6 +150,12 @@ class ConnThread (threading.Thread):
                     self.socket.close()
                     print("Client from " + self.identity + " has disconnected.")
                     keepRunning = False
+                elif(dataArgs[0] == SD_KEYWORD):
+                    # Perform shutdown operations
+                    # This is mostly for testing
+                    # If this stays in, it must be password protected
+                    keepRunning = False
+                    quitServer()
                 else:
                     # Print non-recognized keyword
                     self.socket.send(ERROR_KEYWORD + NOCMD_SND + EOM)
@@ -142,12 +166,49 @@ class ConnThread (threading.Thread):
             print("Client from " + self.identity + " has disconnected unexpectedly.")
 
         # Client disconnected, remove thread from array of active threads
+        print("Closing " + self.identity)
         removeThread(self.threadID)
     # End of run method, thread automatically ends
 
 
+class LoginThread(threading.Thread):
+
+    def __init__(self, serverSocket):
+        threading.Thread.__init__(self)
+        self.serverSocket = serverSocket
+
+    def run(self):
+        print("Login Thread running")
+        freeThreadID = 0
+        runServer = True
+        # Functionality loop
+        while runServer:
+            try:
+                self.serverSocket.listen(1)
+                # Connection received from client
+                clientSocket, addr = self.serverSocket.accept()
+                print("Connection received from " + str(addr[0]) + ":" + str(addr[1]))
+                thread = ConnThread(freeThreadID, clientSocket, addr[0], addr[1])
+                freeThreadID+= 1
+
+                # Add the thread to the list of threads
+                arrayLock.acquire()
+                threads.append(thread)
+                arrayLock.release()
+
+                # Start the thread
+                thread.start()
+            except OSError:
+                print("The socket in the login thread has closed.")
+                print("If this was triggered by something other than a server shutdown, a critical error has occured.")
+                runServer = False
+
 
 # ***Server startup begins here***
+
+signal.signal(signal.SIGINT, signalHandler)
+signal.signal(signal.SIGBREAK, signalHandler)
+signal.signal(signal.SIGTERM, signalHandler)
 
 # Prepare the socket
 serverPort = DEFAULT_PORT
@@ -157,30 +218,16 @@ serverSocket.bind(("", serverPort))
 # Array to hold all threads
 threads = []
 # Threads will increment by 1, starting at 0, avoiding duplicates
-freeThreadID = 0
 # Semaphore for concurrency stuff
 arrayLock = threading.Lock()
 
 # Waiting for connection...
-runServer = True
 print("Beginning server.")
 print("Listening on port " + str(serverPort))
 
-# Functionality loop
-while runServer:
-    serverSocket.listen(1)
+# Create a thread for logging in
+loginThread = LoginThread(serverSocket)
+loginThread.start()
+# Wait for the login thread to end
+loginThread.join()
 
-    # Connection received from client
-    clientSocket, addr = serverSocket.accept()
-    print("Connection received from " + str(addr[0]) + ":" + str(addr[1]))
-    thread = ConnThread(freeThreadID, clientSocket, addr[0], addr[1])
-    freeThreadID+= 1
-
-    # Add the thread to the list of threads
-    arrayLock.acquire()
-    threads.append(thread)
-    arrayLock.release()
-
-    # Start the thread
-    thread.start()
-quitServer()
