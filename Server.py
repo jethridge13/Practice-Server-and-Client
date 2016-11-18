@@ -43,7 +43,7 @@ else:
 users = []
 usersLock = threading.Lock()
 for i in userFile:
-    userId = int(i)
+    userId = i.rstrip()
     users.append(userId)
 userFile.close()
 
@@ -61,13 +61,13 @@ def removeThread(threadID):
 # This is a method which will handle a client logging in to the server
 def clientLogin(socket, identity, args):
     print("Login received from " + identity)
-    if not(args[1].isdigit()) or int(args[1]) == -1:
+    if (args[1].isdigit()) and int(args[1]) == -1:
         print("Invalid login from " + identity)
         socket.send((ERROR_KEYWORD + " 1 'Login invalid' " + EOM).encode("UTF-8"))
         return
     userFound = False
     for i in users:
-        if int(i) == int(args[1]):
+        if i == args[1]:
             userFound = True
     if not(userFound):
         usersLock.acquire()
@@ -78,7 +78,7 @@ def clientLogin(socket, identity, args):
         userFile.close()
         usersLock.release()
         print("New user found. Added user " + str(args[1]))
-    socket.send((LOGIN_KEYWORD + " " + args[1] + " " + EOM).encode("UTF-8"))
+    socket.send((LOGIN_KEYWORD + " '" + args[1] + "' " + EOM).encode("UTF-8"))
     print("Valid login from " + identity)
 
 

@@ -92,7 +92,8 @@ while(keepRunning):
                     print("Incorrect number of arguments.")
                     printHelp()
                 else:
-                    clientSocket.send((LOGIN_KEYWORD + " " + userInput[1] + " " + EOM).encode("UTF-8"))
+                    print(userInput[1])
+                    clientSocket.send((LOGIN_KEYWORD + " '" + userInput[1] + "' " + EOM).encode("UTF-8"))
 
                     # Receive data until EOM found
                     dataArgs = receiveData(clientSocket)
@@ -100,7 +101,7 @@ while(keepRunning):
                     if(dataArgs[0] == LOGIN_KEYWORD):
                         print("Login successful! Welcome user " + str(dataArgs[1]))
                         loggedIn = True
-                        userId = int(dataArgs[1])
+                        userId = dataArgs[1]
         elif(userInput[0] == "help"):
             printHelp()
         else:
