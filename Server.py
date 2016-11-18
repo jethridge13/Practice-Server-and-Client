@@ -11,7 +11,6 @@ from socket import *
 import threading
 import shlex
 import os
-import signal
 import sys
 
 DEFAULT_PORT = 9966
@@ -30,10 +29,13 @@ LOGOUT_SND = " 'Logging you out from the server.' "
 NOCMD_SND = " 0 'That is not a recognized command.' "
 
 USER_FILE = "users.txt"
+GROUP_FILE = "groups.txt"
 
 serverRunning = False
 
 # ***Persistence functionality starts here***
+# Users
+# Check first to see if file exists
 if os.path.exists(USER_FILE):
     print("User file found! Loading users...")
     userFile = open(USER_FILE, "r")
@@ -43,11 +45,28 @@ else:
 users = []
 usersLock = threading.Lock()
 for i in userFile:
+    # Strip the Id of the trailing newline and any extra whitespace
     userId = i.rstrip()
     users.append(userId)
 userFile.close()
 
+# Groups
+if os.path.exists(GROUP_FILE):
+    print("Groups file found! Loading groups...")
+    groupFile = open(GROUP_FILE, "r")
+else:
+    print("A groups file was not found and is necessary for safe operations.")
+    print("A placeholder file will be made, but the server will not provide much functionality without any groups.")
+    groupFile = open(GROUP_FILE, "w+")
+groups = []
+for i in groupFile:
+    group = i.rstrip()
+    groups.append(group)
+groupFile.close()
+
+
 # ***Helper methods start here***
+
 
 # This method removes a thread from the array of threads
 def removeThread(threadID):
@@ -57,6 +76,7 @@ def removeThread(threadID):
             threads.remove(i)
             break
     arrayLock.release()
+
 
 # This is a method which will handle a client logging in to the server
 def clientLogin(socket, identity, args):
@@ -82,7 +102,15 @@ def clientLogin(socket, identity, args):
     print("Valid login from " + identity)
 
 
-# This method safetly quits the server, closing all open files, threads, and such.
+# This method returns all of the groups to the client that requested it.
+def agSend(socket):
+    socket.send(AG_KEYWORD + " ")
+    socket.send(len(groups) + " ")
+    for i in groups:
+        socket.send(i + " ")
+    socket.send(EOM)
+
+# This method safely quits the server, closing all open files, threads, and such.
 def quitServer():
     print("Quitting server!")
     for i in threads:
@@ -91,9 +119,6 @@ def quitServer():
         i.socket.close()
     loginThread.serverSocket.close()
     sys.exit(0)
-
-def signalHandler(signal, frame):
-    print("TEST")
 
 
 # ***This is the thread object***
@@ -119,39 +144,36 @@ class ConnThread (threading.Thread):
                 dataArgs = []
 
                 # Receive data until an EOM is found
-                while(shlex.split(EOM)[0] not in dataArgs):
+                while shlex.split(EOM)[0] not in dataArgs:
                     dataRcv = self.socket.recv(1024)
                     dataRcv = dataRcv.decode()
-                    #print(dataRcv)
-                    #self.socket.send(str(self.threadID).encode("UTF-8"))
                     # Split the arguments, keeping quoted arguments together
                     data = shlex.split(dataRcv)
                     # Append the arguments to dataArgs
                     # This way, it will keep accepting arguments until an EOM is found
                     for i in data:
                         dataArgs.append(i)
-                    #print(dataArgs)
 
                 # EOM found, search for arguments
-                if(dataArgs[0] == LOGIN_KEYWORD):
+                if dataArgs[0] == LOGIN_KEYWORD:
                     # Perform login operations
                     clientLogin(self.socket, self.identity, dataArgs)
-                elif(dataArgs[0] == AG_KEYWORD):
+                elif dataArgs[0] == AG_KEYWORD:
                     # Perform ag operations
-                    self.socket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
-                elif(dataArgs[0] == SG_KEYWORD):
+                    agSend(self.socket)
+                elif dataArgs[0] == SG_KEYWORD:
                     # Perform sg operations
                     self.socket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
-                elif(dataArgs[0] == RG_KEYWORD):
+                elif dataArgs[0] == RG_KEYWORD:
                     # Perform rg operations
                     self.socket.send((RG_KEYWORD + " " + EOM).encode("UTF-8"))
-                elif(dataArgs[0] == LOGOUT_KEYWORD):
+                elif dataArgs[0] == LOGOUT_KEYWORD:
                     # Perform logout operations
                     self.socket.send((LOGOUT_KEYWORD + LOGOUT_SND + EOM).encode("UTF-8"))
                     self.socket.close()
                     print("Client from " + self.identity + " has disconnected.")
                     keepRunning = False
-                elif(dataArgs[0] == SD_KEYWORD):
+                elif dataArgs[0] == SD_KEYWORD:
                     # Perform shutdown operations
                     # This is mostly for testing
                     # If this stays in, it must be password protected
@@ -190,7 +212,7 @@ class LoginThread(threading.Thread):
                 clientSocket, addr = self.serverSocket.accept()
                 print("Connection received from " + str(addr[0]) + ":" + str(addr[1]))
                 thread = ConnThread(freeThreadID, clientSocket, addr[0], addr[1])
-                freeThreadID+= 1
+                freeThreadID += 1
 
                 # Add the thread to the list of threads
                 arrayLock.acquire()
@@ -206,10 +228,6 @@ class LoginThread(threading.Thread):
 
 
 # ***Server startup begins here***
-
-signal.signal(signal.SIGINT, signalHandler)
-signal.signal(signal.SIGBREAK, signalHandler)
-signal.signal(signal.SIGTERM, signalHandler)
 
 # Prepare the socket
 serverPort = DEFAULT_PORT
@@ -231,4 +249,3 @@ loginThread = LoginThread(serverSocket)
 loginThread.start()
 # Wait for the login thread to end
 loginThread.join()
-

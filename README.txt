@@ -4,7 +4,11 @@ login <#> - Takes one argument, your user ID. Will log you into the server to ac
 you can access any of the other commands.
 help - Displays this help menu.
 ag [<#>] - Has one optional argument. Returns a list of all existing discussion groups, N groups at a time. If the
-argument is not provided, a default value of 5 will be used.
+argument is not provided, a default value of 5 will be used. When in ag mode,  the following subcommands are available.
+	s - Subscribe to groups. Takes between 1 and N arguments. Subscribes to all groups listed in the argument.
+	u - Unsubscribe to groups. Same functionality as s, but instead unsubscribes.
+	n - Lists the next N discussion groups. If there are no more to display, exits ag mode.
+	q - Exits from ag mode.
 sg [<#>] - Has one optional argument. Returns a list of all subscribed groups, N groups at a time. If the argument is
 not provided, then a default value of 5 will be used.
 rg <gname> [<#>] - Takes one mandatory argument and one optional argument. It displays the top N posts in a given
@@ -58,3 +62,4 @@ list of all error numbers and what they mean:
 All persistent information is stored in txt files. If a given file is not found, then it is created before it is first
 used. Here is a list of all files used by the program:
 users.txt
+groups.txt

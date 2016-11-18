@@ -22,9 +22,10 @@ RG_DEFAULT = 5
 loggedIn = False
 userId = -1
 
+
 def receiveData(socket):
     dataArgs = []
-    while(shlex.split(EOM)[0] not in dataArgs):
+    while shlex.split(EOM)[0] not in dataArgs:
         dataRcv = socket.recv(1024)
         dataRcv = dataRcv.decode()
         data = shlex.split(dataRcv)
@@ -34,13 +35,19 @@ def receiveData(socket):
             dataArgs.append(i)
     return dataArgs
 
+
 def printHelp():
     print("Help - Supported Commands: ")
     print("login <#> - Takes one argument, your user ID. Will log you into the server to access the forum. You must "
           "login before you can access any of the other commands.")
     print("help - Displays this help menu.")
     print("ag [<#>] - Has one optional argument. Returns a list of all existing discussion groups, N groups at a time. "
-          "If the argument is not provided, a default value of " + str(AG_DEFAULT) + " will be used.")
+          "If the argument is not provided, a default value of " + str(AG_DEFAULT) + " will be used. When in ag mode, "
+          " the following subcommands are available.")
+    print("\ts - Subscribe to groups. Takes between 1 and N arguments. Subscribes to all groups listed in the argument." )
+    print("\tu - Unsubscribe to groups. Same functionality as s, but instead unsubscribes.")
+    print("\tn - Lists the next N discussion groups. If there are no more to display, exits ag mode.")
+    print("\tq - Exits from ag mode.")
     print("sg [<#>] - Has one optional argument. Returns a list of all subscribed groups, N groups at a time. If the "
           "argument is not provided, then a default value of " + str(SG_DEFAULT) + " will be used.")
     print("rg <gname> [<#>] - Takes one mandatory argument and one optional argument. It displays the top N posts in a "
@@ -77,18 +84,18 @@ clientSocket.connect((host, port))
 
 keepRunning = True
 print("Connection successful!")
-while(keepRunning):
-    if(loggedIn):
-        stdin = input(str(userId) + " >>>")
+while keepRunning:
+    if loggedIn:
+        stdin = input(str(userId) + ">>> ")
     else:
         stdin = input('>>> ')
     userInput = shlex.split(stdin)
     if not loggedIn:
-        if(userInput[0] == "login"):
+        if userInput[0] == "login":
             # Login operations
             if not loggedIn:
                 # Login requires exactly 2 arguments
-                if(len(userInput) != 2):
+                if len(userInput) != 2:
                     print("Incorrect number of arguments.")
                     printHelp()
                 else:
@@ -98,22 +105,27 @@ while(keepRunning):
                     # Receive data until EOM found
                     dataArgs = receiveData(clientSocket)
 
-                    if(dataArgs[0] == LOGIN_KEYWORD):
+                    if dataArgs[0] == LOGIN_KEYWORD :
                         print("Login successful! Welcome user " + str(dataArgs[1]))
                         loggedIn = True
                         userId = dataArgs[1]
-        elif(userInput[0] == "help"):
+        elif userInput[0] == "help":
             printHelp()
         else:
             print("Please login before issuing commands.")
             printHelp()
     else:
-        if(userInput[0] == "login"):
+        if userInput[0] == "login":
             print("You are already logged in.")
             printHelp()
-        elif(userInput[0] == "help"):
+        elif userInput[0] == "help":
             printHelp()
-        elif(userInput[0] == "logout"):
+        elif userInput[0] == "ag":
+            #TODO Add in the optional argument functionality
+            clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
+            dataArgs = receiveData(clientSocket)
+            print(dataArgs)
+        elif userInput[0] == "logout":
             print("Logging out from the server...")
             clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
             dataArgs = receiveData(clientSocket)
@@ -121,12 +133,12 @@ while(keepRunning):
                 print("Received from server: " + dataArgs[1])
             keepRunning = False
             break
-        elif(userInput[0] == "EOM"):
+        elif userInput[0] == "EOM":
             clientSocket.send("'\r\n\r\n'".encode("UTF-8"))
             rcv = clientSocket.recv(1024)
             print("Received: " + rcv.decode())
             continue
-        elif(userInput[0] == "sd"):
+        elif userInput[0] == "sd":
             clientSocket.send((SD_KEYWORD + " " + EOM).encode("UTF-8"))
 
 if loggedIn:
