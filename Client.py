@@ -15,11 +15,50 @@ RG_KEYWORD = "RG"
 LOGOUT_KEYWORD = "LOGOUT"
 SD_KEYWORD = "SD"
 
+AG_DEFAULT = 5
+SG_DEFAULT = 5
+RG_DEFAULT = 5
+
 loggedIn = False
 userId = -1
 
+def receiveData(socket):
+    dataArgs = []
+    while(shlex.split(EOM)[0] not in dataArgs):
+        dataRcv = socket.recv(1024)
+        dataRcv = dataRcv.decode()
+        data = shlex.split(dataRcv)
+        # Append the arguments to dataArgs
+        # This way, it will keep accepting arguments until an EOM is found
+        for i in data:
+            dataArgs.append(i)
+    return dataArgs
+
 def printHelp():
-    print("Help")
+    print("Help - Supported Commands: ")
+    print("login <#> - Takes one argument, your user ID. Will log you into the server to access the forum. You must "
+          "login before you can access any of the other commands.")
+    print("help - Displays this help menu.")
+    print("ag [<#>] - Has one optional argument. Returns a list of all existing discussion groups, N groups at a time. "
+          "If the argument is not provided, a default value of " + str(AG_DEFAULT) + " will be used.")
+    print("sg [<#>] - Has one optional argument. Returns a list of all subscribed groups, N groups at a time. If the "
+          "argument is not provided, then a default value of " + str(SG_DEFAULT) + " will be used.")
+    print("rg <gname> [<#>] - Takes one mandatory argument and one optional argument. It displays the top N posts in a "
+          "given discussion group. The argument, 'gname' determines which group to display. If the optional argument is"
+          " not provided, then a default value of " + str(RG_DEFAULT) + " will be used. After entering this command, the "
+          "application will enter 'rg' mode, which uses the following subcommands.")
+    print("\t[#] - The post number to display. Entering this mode will give even more subcommands.")
+    print("\t\tn - Display, at most, n more lines of content.")
+    print("\t\tq - Quit this read mode to return to normal rg mode")
+    print("\tr [#] - Marks the given post as read. If a single number is specified, then that single post will be marked"
+          " as read. You can use the format, 'n-m' to mark posts n through m as read.")
+    print("\tn - Lists the next n posts. If there are no more posts to display, exits rg mode.")
+    print("\tp - Post to the group. This subcommand will enter post mode.")
+    print("\t\tThe application will request a title for the post. Then, the application will allow you to write the "
+          "body of the post. It will accept input until you enter a blank line, followed by a period, followed by "
+          "another blank line. After this command sequence is accepted, the post will be submitted and you will be "
+          "returned to rg mode.")
+    print("logout - Logs you out from the server, subsequently closing the application.")
 
 # Get system arguments to determine address and port
 try:
@@ -56,15 +95,7 @@ while(keepRunning):
                     clientSocket.send((LOGIN_KEYWORD + " " + userInput[1] + " " + EOM).encode("UTF-8"))
 
                     # Receive data until EOM found
-                    dataArgs = []
-                    while(shlex.split(EOM)[0] not in dataArgs):
-                            dataRcv = clientSocket.recv(1024)
-                            dataRcv = dataRcv.decode()
-                            data = shlex.split(dataRcv)
-                            # Append the arguments to dataArgs
-                            # This way, it will keep accepting arguments until an EOM is found
-                            for i in data:
-                                dataArgs.append(i)
+                    dataArgs = receiveData(clientSocket)
 
                     if(dataArgs[0] == LOGIN_KEYWORD):
                         print("Login successful! Welcome user " + str(dataArgs[1]))
@@ -79,8 +110,14 @@ while(keepRunning):
         if(userInput[0] == "login"):
             print("You are already logged in.")
             printHelp()
+        elif(userInput[0] == "help"):
+            printHelp()
         elif(userInput[0] == "logout"):
             print("Logging out from the server...")
+            clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
+            dataArgs = receiveData(clientSocket)
+            if(dataArgs[0] == LOGOUT_KEYWORD):
+                print("Received from server: " + dataArgs[1])
             keepRunning = False
             break
         elif(userInput[0] == "EOM"):
@@ -91,4 +128,5 @@ while(keepRunning):
         elif(userInput[0] == "sd"):
             clientSocket.send((SD_KEYWORD + " " + EOM).encode("UTF-8"))
 
-clientSocket.close()
+if loggedIn:
+    clientSocket.close()

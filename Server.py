@@ -12,7 +12,6 @@ import threading
 import shlex
 import os
 import signal
-import select
 import sys
 
 DEFAULT_PORT = 9966
@@ -88,7 +87,7 @@ def quitServer():
     print("Quitting server!")
     for i in threads:
         print("Closing " + i.identity)
-        i.socket.send(("Server shutting down. Goodbye.").encode("UTF-8"))
+        i.socket.shutdown(SHUT_RDWR)
         i.socket.close()
     loginThread.serverSocket.close()
     sys.exit(0)
