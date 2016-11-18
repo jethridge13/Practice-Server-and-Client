@@ -67,6 +67,53 @@ def printHelp():
           "returned to rg mode.")
     print("logout - Logs you out from the server, subsequently closing the application.")
 
+
+#TODO Once subscription is implemented, update this to work
+def subscribe(groups):
+    for i in groups:
+        print("Subscribed to " + str(i))
+
+
+#TODO Once subscription is implemented, update this to work
+def unsub(groups):
+    for i in groups:
+        print("Unsubscribed to " + str(i))
+
+
+# This function handles the implementation of the ag command. It uses the submethods subscribe() and unsubscribe()
+def ag(n):
+    clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
+    dataArgs = receiveData(clientSocket)
+    groupsLeft = 0
+    currentMaxGroup = 2
+    if dataArgs[0] == AG_KEYWORD:
+        groupsLeft = int(dataArgs[1])
+        while(groupsLeft > 0):
+            for i in range(currentMaxGroup, currentMaxGroup + n):
+                print(str(i - 1) + ". " + dataArgs[i])
+            currentMaxGroup = currentMaxGroup + n
+            groupsLeft = groupsLeft - n
+            nextSequence = False
+            while(not nextSequence):
+                stdin = input(str(userId) + "(AG Mode)>>> ")
+                userInput = shlex.split(stdin)
+                if userInput[0] == "s":
+                    # Subscribe to group
+                    groupsToSub = userInput[1:]
+                    subscribe(groupsToSub)
+                elif userInput[0] == "u":
+                    # Unsubscribe to group
+                    groupsToUnsub = userInput[1:]
+                    unsub(groupsToUnsub)
+                elif userInput[0] == "n":
+                    nextSequence = True
+                elif userInput[0] == "q":
+                    groupsLeft = 0
+                    nextSequence = True
+    print("Exiting AG Mode")
+
+
+
 # Get system arguments to determine address and port
 try:
     argv = sys.argv
@@ -122,9 +169,13 @@ while keepRunning:
             printHelp()
         elif userInput[0] == "ag":
             #TODO Add in the optional argument functionality
-            clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
-            dataArgs = receiveData(clientSocket)
-            print(dataArgs)
+            if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
+                ag(int(userInput[1]))
+            elif len(userInput) == 1:
+                ag(AG_DEFAULT)
+            else:
+                print("Incorrect usage for ag.")
+                printHelp()
         elif userInput[0] == "logout":
             print("Logging out from the server...")
             clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))

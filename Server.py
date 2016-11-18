@@ -103,12 +103,13 @@ def clientLogin(socket, identity, args):
 
 
 # This method returns all of the groups to the client that requested it.
-def agSend(socket):
-    socket.send(AG_KEYWORD + " ")
-    socket.send(len(groups) + " ")
+def agSend(socket, identity):
+    socket.send((AG_KEYWORD + " ").encode("UTF-8"))
+    socket.send((str(len(groups)) + " ").encode("UTF-8"))
     for i in groups:
-        socket.send(i + " ")
-    socket.send(EOM)
+        socket.send((i + " ").encode("UTF-8"))
+    socket.send((EOM).encode("UTF-8"))
+    print("Sent all groups to " + identity)
 
 # This method safely quits the server, closing all open files, threads, and such.
 def quitServer():
@@ -160,7 +161,7 @@ class ConnThread (threading.Thread):
                     clientLogin(self.socket, self.identity, dataArgs)
                 elif dataArgs[0] == AG_KEYWORD:
                     # Perform ag operations
-                    agSend(self.socket)
+                    agSend(self.socket, self.identity)
                 elif dataArgs[0] == SG_KEYWORD:
                     # Perform sg operations
                     self.socket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
