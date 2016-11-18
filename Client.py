@@ -6,6 +6,7 @@
 from socket import *
 import sys
 import shlex
+import os
 
 EOM = "'\r\n\r\n'"
 LOGIN_KEYWORD = "LOGIN"
@@ -22,6 +23,9 @@ RG_DEFAULT = 5
 loggedIn = False
 userId = -1
 
+subGroups = []
+
+SUB_FILE = "subscriptions.txt"
 
 def receiveData(socket):
     dataArgs = []
@@ -68,10 +72,17 @@ def printHelp():
     print("logout - Logs you out from the server, subsequently closing the application.")
 
 
-#TODO Once subscription is implemented, update this to work
-def subscribe(groups):
+def subscribe(groups, dataArgs):
     for i in groups:
-        print("Subscribed to " + str(i))
+        if dataArgs[int(i) - 1] in subGroups:
+            print("You are already subscribed to " + str(dataArgs[int(i) - 1]))
+        else:
+            subGroups.append(str(dataArgs[int(i) - 1]))
+            print("Subscribed to " + str(dataArgs[int(i) - 1]))
+    subFile = open(SUB_FILE, "w")
+    for i in subGroups:
+        subFile.write(i + "\n")
+    subFile.close()
 
 
 #TODO Once subscription is implemented, update this to work
@@ -90,7 +101,10 @@ def ag(n):
         groupsLeft = int(dataArgs[1])
         while(groupsLeft > 0):
             for i in range(currentMaxGroup, currentMaxGroup + n):
-                print(str(i - 1) + ". " + dataArgs[i])
+                if dataArgs[i] in subGroups:
+                    print(str(i - 1) + ". (s) " + dataArgs[i])
+                else:
+                    print(str(i - 1) + ". ( ) " + dataArgs[i])
             currentMaxGroup = currentMaxGroup + n
             groupsLeft = groupsLeft - n
             nextSequence = False
@@ -100,7 +114,7 @@ def ag(n):
                 if userInput[0] == "s":
                     # Subscribe to group
                     groupsToSub = userInput[1:]
-                    subscribe(groupsToSub)
+                    subscribe(groupsToSub, dataArgs[2:])
                 elif userInput[0] == "u":
                     # Unsubscribe to group
                     groupsToUnsub = userInput[1:]
@@ -113,6 +127,7 @@ def ag(n):
     print("Exiting AG Mode")
 
 
+# ***Client starts here***
 
 # Get system arguments to determine address and port
 try:
@@ -156,6 +171,14 @@ while keepRunning:
                         print("Login successful! Welcome user " + str(dataArgs[1]))
                         loggedIn = True
                         userId = dataArgs[1]
+                        if os.path.exists(SUB_FILE):
+                            subFile = open(SUB_FILE, "r")
+                        else:
+                            subFile = open(SUB_FILE, "w+")
+                        for i in subFile:
+                            group = i.rstrip()
+                            subGroups.append(group)
+                        subFile.close()
         elif userInput[0] == "help":
             printHelp()
         else:
