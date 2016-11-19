@@ -11,6 +11,9 @@ argument is not provided, a default value of 5 will be used. When in ag mode,  t
 	q - Exits from ag mode.
 sg [<#>] - Has one optional argument. Returns a list of all subscribed groups, N groups at a time. If the argument is
 not provided, then a default value of 5 will be used.
+	u - Unsubscribe to groups. See ag.
+	n - Lists the next N discussion groups. If there are no more to display, exits sg mode.
+	q - Exits from sg mode.
 rg <gname> [<#>] - Takes one mandatory argument and one optional argument. It displays the top N posts in a given
 discussion group. The argument, 'gname' determines which group to display. If the optional argument is not provided,
 then a default value of 5 will be used. After entering this command, the application will enter 'rg' mode, which uses

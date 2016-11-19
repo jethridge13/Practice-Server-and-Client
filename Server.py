@@ -111,6 +111,16 @@ def agSend(socket, identity):
     socket.send((EOM).encode("UTF-8"))
     print("Sent all groups to " + identity)
 
+
+# This method handles the sg functionality.
+def sgSend(socket, identity):
+    socket.send((SG_KEYWORD + " ").encode("UTF-8"))
+    socket.send((str(len(groups)) + " ").encode("UTF-8"))
+    for i in groups:
+        socket.send((i + " ").encode("UTF-8"))
+    socket.send((EOM).encode("UTF-8"))
+    print("Sent all groups to " + identity + " for use with sg.")
+
 # This method safely quits the server, closing all open files, threads, and such.
 def quitServer():
     print("Quitting server!")
@@ -164,7 +174,7 @@ class ConnThread (threading.Thread):
                     agSend(self.socket, self.identity)
                 elif dataArgs[0] == SG_KEYWORD:
                     # Perform sg operations
-                    self.socket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
+                    sgSend(self.socket, self.identity)
                 elif dataArgs[0] == RG_KEYWORD:
                     # Perform rg operations
                     self.socket.send((RG_KEYWORD + " " + EOM).encode("UTF-8"))

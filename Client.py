@@ -54,6 +54,9 @@ def printHelp():
     print("\tq - Exits from ag mode.")
     print("sg [<#>] - Has one optional argument. Returns a list of all subscribed groups, N groups at a time. If the "
           "argument is not provided, then a default value of " + str(SG_DEFAULT) + " will be used.")
+    print("\tu - Unsubscribe to groups. See ag.")
+    print("\tn - Lists the next N discussion groups. If there are no more to display, exits sg mode.")
+    print("\tq - Exits from sg mode.")
     print("rg <gname> [<#>] - Takes one mandatory argument and one optional argument. It displays the top N posts in a "
           "given discussion group. The argument, 'gname' determines which group to display. If the optional argument is"
           " not provided, then a default value of " + str(RG_DEFAULT) + " will be used. After entering this command, the "
@@ -72,6 +75,7 @@ def printHelp():
     print("logout - Logs you out from the server, subsequently closing the application.")
 
 
+# Takes two lists, groups and dataArgs. groups is the list of groups to subscribe to. dataArgs is the list of all groups
 def subscribe(groups, dataArgs):
     for i in groups:
         if dataArgs[int(i) - 1] in subGroups:
@@ -85,6 +89,7 @@ def subscribe(groups, dataArgs):
     subFile.close()
 
 
+# Takes two lists, groups and dataArgs. groups is the list of groups to unsub from. dataArgs is the list of all groups.
 def unsub(groups, dataArgs):
     for i in groups:
         if dataArgs[int(i) - 1] in subGroups:
@@ -98,7 +103,7 @@ def unsub(groups, dataArgs):
     subFile.close()
 
 
-# This function handles the implementation of the ag command. It uses the submethods subscribe() and unsubscribe()
+# This function handles the implementation of the ag command. It uses the submethods subscribe() and unsub()
 def ag(n):
     clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
@@ -107,7 +112,13 @@ def ag(n):
     if dataArgs[0] == AG_KEYWORD:
         groupsLeft = int(dataArgs[1])
         while(groupsLeft > 0):
-            for i in range(currentMaxGroup, currentMaxGroup + n):
+            # Make sure to avoid index out of array exception
+            indexEnd = currentMaxGroup + n
+            if groupsLeft - n < 0:
+                indexEnd = indexEnd + (groupsLeft - n)
+
+            # Iterate through the list, showing n groups at a time until no more groups are found
+            for i in range(currentMaxGroup, indexEnd):
                 if dataArgs[i] in subGroups:
                     print(str(i - 1) + ". (s) " + dataArgs[i])
                 else:
@@ -131,7 +142,62 @@ def ag(n):
                 elif userInput[0] == "q":
                     groupsLeft = 0
                     nextSequence = True
+                elif userInput[0] == "help":
+                    printHelp()
+                else:
+                    print("Unsupported operation in ag mode.")
     print("Exiting AG Mode")
+
+
+# This method handles the implementation of sg. It uses the submethod unsub()
+#TODO Add in number of new posts
+def sg(n):
+    clientSocket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
+    dataArgs = receiveData(clientSocket)
+    groupsLeft = 0
+    currentMaxGroup = 0
+    if dataArgs[0] == SG_KEYWORD:
+        groupsLeft = len(subGroups)
+        while(groupsLeft > 0):
+            # Make sure to avoid index out of array exception
+            indexEnd = currentMaxGroup + n
+            if groupsLeft - n < 0:
+                indexEnd = indexEnd + (groupsLeft - n)
+
+            # Iterate through the list, showing n groups at a time until no more groups are found
+            for i in range(currentMaxGroup, indexEnd):
+                print(str(i + 1) + ". \t\t" + subGroups[i])
+            currentMaxGroup = currentMaxGroup + n
+            groupsLeft = groupsLeft - n
+            nextSequence = False
+            while(not nextSequence):
+                stdin = input(str(userId) + "(SG Mode)>>> ")
+                userInput = shlex.split(stdin)
+                if userInput[0] == "u":
+                    # Unsubscribe to group
+                    # groups contains the number of the group according to subGroups
+                    # This number needs to be translated to the number as it is used in dataArgs
+                    groups = userInput[1:]
+                    groupNamesToUnsub = []
+                    for i in range(0, len(subGroups)):
+                        if str(i) in groups:
+                            groupNamesToUnsub.append(subGroups[i - 1])
+                    groupsToUnsub = []
+                    for i in range(0, len(dataArgs)):
+                        for j in groupNamesToUnsub:
+                            if j == dataArgs[i]:
+                                groupsToUnsub.append(i - 1)
+                    unsub(groupsToUnsub, dataArgs[2:])
+                elif userInput[0] == "n":
+                    nextSequence = True
+                elif userInput[0] == "q":
+                    groupsLeft = 0
+                    nextSequence = True
+                elif userInput[0] == "help":
+                    printHelp()
+                else:
+                    print("Unsupported operation in sg mode.")
+    print("Exiting SG Mode")
 
 
 # ***Client starts here***
@@ -198,13 +264,20 @@ while keepRunning:
         elif userInput[0] == "help":
             printHelp()
         elif userInput[0] == "ag":
-            #TODO Add in the optional argument functionality
             if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
                 ag(int(userInput[1]))
             elif len(userInput) == 1:
                 ag(AG_DEFAULT)
             else:
                 print("Incorrect usage for ag.")
+                printHelp()
+        elif userInput[0] == "sg":
+            if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
+                sg(int(userInput[1]))
+            elif len(userInput) == 1:
+                sg(SG_DEFAULT)
+            else:
+                print("Incorrect usage for sg.")
                 printHelp()
         elif userInput[0] == "logout":
             print("Logging out from the server...")
@@ -221,6 +294,9 @@ while keepRunning:
             continue
         elif userInput[0] == "sd":
             clientSocket.send((SD_KEYWORD + " " + EOM).encode("UTF-8"))
+        else:
+            print("Unrecognized command.")
+            printHelp()
 
 if loggedIn:
     clientSocket.close()
