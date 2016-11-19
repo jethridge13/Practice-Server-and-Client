@@ -61,5 +61,8 @@ list of all error numbers and what they mean:
 
 All persistent information is stored in txt files. If a given file is not found, then it is created before it is first
 used. Here is a list of all files used by the program:
-users.txt
-groups.txt
+Server files:
+    users.txt
+    groups.txt
+Client files:
+    subscriptions.txt

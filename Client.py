@@ -85,10 +85,17 @@ def subscribe(groups, dataArgs):
     subFile.close()
 
 
-#TODO Once subscription is implemented, update this to work
-def unsub(groups):
+def unsub(groups, dataArgs):
     for i in groups:
-        print("Unsubscribed to " + str(i))
+        if dataArgs[int(i) - 1] in subGroups:
+            subGroups.remove(str(dataArgs[int(i) - 1]))
+            print("Unsubscribed to " + str(i))
+        else:
+            print("You are not subscribed to " + str(dataArgs[int(i) - 1]))
+    subFile = open(SUB_FILE, "w")
+    for i in subGroups:
+        subFile.write(i + "\n")
+    subFile.close()
 
 
 # This function handles the implementation of the ag command. It uses the submethods subscribe() and unsubscribe()
@@ -118,7 +125,7 @@ def ag(n):
                 elif userInput[0] == "u":
                     # Unsubscribe to group
                     groupsToUnsub = userInput[1:]
-                    unsub(groupsToUnsub)
+                    unsub(groupsToUnsub, dataArgs[2:])
                 elif userInput[0] == "n":
                     nextSequence = True
                 elif userInput[0] == "q":
