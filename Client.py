@@ -7,6 +7,7 @@ from socket import *
 import sys
 import shlex
 import os
+import datetime
 
 EOM = "'\r\n\r\n'"
 LOGIN_KEYWORD = "LOGIN"
@@ -15,6 +16,7 @@ SG_KEYWORD = "SG"
 RG_KEYWORD = "RG"
 LOGOUT_KEYWORD = "LOGOUT"
 SD_KEYWORD = "SD"
+ERROR_KEYWORD = "ERROR"
 
 AG_DEFAULT = 5
 SG_DEFAULT = 5
@@ -154,7 +156,6 @@ def ag(n):
 def sg(n):
     clientSocket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
-    groupsLeft = 0
     currentMaxGroup = 0
     if dataArgs[0] == SG_KEYWORD:
         groupsLeft = len(subGroups)
@@ -199,6 +200,67 @@ def sg(n):
                     print("Unsupported operation in sg mode.")
     print("Exiting SG Mode")
 
+# This method handles the implementation of rg, which is "read group"
+#TODO Fix a number of things when displaying the post information. Right now it has too many newlines and occasionally displays the author when it shouldn't.
+def rg(gname, n):
+    gname = str(gname)
+    clientSocket.send((RG_KEYWORD + " " + gname + " " + EOM).encode("UTF-8"))
+    dataArgs = receiveData(clientSocket)
+    if dataArgs[0] == RG_KEYWORD:
+        print(gname + " found!")
+        totalPosts = dataArgs[1]
+        totalPosts = int(totalPosts)
+        # allPosts is an array containing all the information about the post. That information is contained in an array
+        # Yep, that means 2D arrays.
+        allPosts = []
+        for i in range(totalPosts):
+            dataArgs = receiveData(clientSocket)
+            allPosts.append(dataArgs)
+        print(allPosts)
+        # Entering rg mode here
+        # For use in this loop:
+        #   0 - RG_KEYWORD
+        #   1 - Number of message
+        #   2 - Name of file
+        #   3 - Content of file (first line is title)
+        groupsLeft = len(allPosts)
+        currentMaxGroup = 0
+        while(groupsLeft > 0):
+            # Make sure to avoid index out of array exception
+            indexEnd = currentMaxGroup + n
+            if groupsLeft - n < 0:
+                indexEnd = indexEnd + (groupsLeft - n)
+
+            # Iterate through the list, showing n groups at a time until no more groups are found
+            for i in range(currentMaxGroup, indexEnd):
+                dateOfPost = datetime.datetime.fromtimestamp(int(allPosts[i][3]))
+                print(str(i + 1) + ". \t\t" + str(dateOfPost) + "\t" + str(allPosts[i][4]))
+            currentMaxGroup = currentMaxGroup + n
+            groupsLeft = groupsLeft - n
+            nextSequence = False
+            while(not nextSequence):
+                stdin = input(str(userId) + "(RG Mode)>>> ")
+                userInput = shlex.split(stdin)
+                if userInput[0] == "n":
+                    nextSequence = True
+                elif userInput[0] == "q":
+                    groupsLeft = 0
+                    nextSequence = True
+                elif userInput[0] == "help":
+                    printHelp()
+                elif userInput[0] == "r":
+                    print("Mark post as read")
+                    #TODO Mark post as read mode
+                elif userInput[0] == "p":
+                    print("Post mode")
+                    #TODO Post mode
+                else:
+                    print("Unsupported operation in rg mode.")
+
+    elif dataArgs[0] == ERROR_KEYWORD:
+        print("Error in finding group.")
+        if dataArgs[1] == str(10):
+            print(gname + " not found.")
 
 # ***Client starts here***
 
@@ -278,6 +340,14 @@ while keepRunning:
                 sg(SG_DEFAULT)
             else:
                 print("Incorrect usage for sg.")
+                printHelp()
+        elif userInput[0] == "rg":
+            if len(userInput) == 2:
+                rg(userInput[1], RG_DEFAULT)
+            elif len(userInput) == 3 and int(userInput[2]) > 0:
+                rg(userInput[1], int(userInput[2]))
+            else:
+                print("Incorrect usage for rg.")
                 printHelp()
         elif userInput[0] == "logout":
             print("Logging out from the server...")

@@ -1,0 +1,5 @@
+Welcome to comp.lang.python!
+
+Admin
+
+Welcome to the comp.lang.python forum! Discuss things pertaining to Python.

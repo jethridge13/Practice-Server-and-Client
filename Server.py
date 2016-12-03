@@ -6,12 +6,14 @@
 # ERRORS:
 # 0     Command not found
 # 1     Login invalid
+# 10    rg group not found
 
 from socket import *
 import threading
 import shlex
 import os
 import sys
+import errno
 
 DEFAULT_PORT = 9966
 
@@ -27,9 +29,11 @@ SD_KEYWORD = "SD"
 
 LOGOUT_SND = " 'Logging you out from the server.' "
 NOCMD_SND = " 0 'That is not a recognized command.' "
+RGGNF_SND = " 10 'Requested group not found.' "
 
 USER_FILE = "users.txt"
 GROUP_FILE = "groups.txt"
+GROUPS_FOLDER = "groups"
 
 serverRunning = False
 
@@ -63,6 +67,20 @@ for i in groupFile:
     group = i.rstrip()
     groups.append(group)
 groupFile.close()
+# Hacky way of checking if a folder exists
+try:
+    os.makedirs(GROUP_FILE)
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
+for i in groups:
+    # This is a very hacky way of making a bunch of folders inside the main groups folder
+    try:
+        os.makedirs(GROUPS_FOLDER + "/" + i)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+os.stat_float_times(False)
 
 
 # ***Helper methods start here***
@@ -113,6 +131,7 @@ def agSend(socket, identity):
 
 
 # This method handles the sg functionality.
+# TODO This needs to be updated at some point for new post functionality
 def sgSend(socket, identity):
     socket.send((SG_KEYWORD + " ").encode("UTF-8"))
     socket.send((str(len(groups)) + " ").encode("UTF-8"))
@@ -120,6 +139,41 @@ def sgSend(socket, identity):
         socket.send((i + " ").encode("UTF-8"))
     socket.send((EOM).encode("UTF-8"))
     print("Sent all groups to " + identity + " for use with sg.")
+
+def rgSend(socket, identity, dataArgs):
+    # dataArgs (should) contain the following:
+    # 0 - RG_KEYWORD
+    # 1 - gname - the group of which to serve posts
+    gname = dataArgs[1]
+    if gname in groups:
+        print("Group '" + gname + "' requested from " + identity)
+        # This is the path to the folder for the requested group
+        activeFolder = GROUPS_FOLDER + "/" + gname
+        # allFiles holds an array of all files in the group folder.
+        # The contents of the file will be sent, one file at a time, with the first message being the number of posts
+        # overall to send.
+        allFiles = os.listdir(activeFolder)
+        socket.send((RG_KEYWORD + " " + str(len(allFiles)) + " " + EOM).encode("UTF-8"))
+        i = 0
+        for file in allFiles:
+            activeFilePath = activeFolder + "/" + file
+            activeFile = open(activeFilePath, "r")
+            mTime = os.path.getmtime(activeFilePath)
+            i += 1
+            socket.send((RG_KEYWORD + " " + str(i) + " " + file + " " + str(mTime) + " ").encode("UTF-8"))
+            content = []
+            for line in activeFile:
+                content.append(line.rstrip())
+            for line in content:
+                socket.send(("\'" + line + "\'").encode("UTF-8"))
+            socket.send(" ".encode("UTF-8"))
+            socket.send(EOM.encode("UTF-8"))
+            activeFile.close()
+    else:
+        # Group not found, send GNF error
+        socket.send((ERROR_KEYWORD + RGGNF_SND + EOM).encode("UTF-8"))
+        print("Unknown group, '" + gname + "' requested from " + identity)
+
 
 # This method safely quits the server, closing all open files, threads, and such.
 def quitServer():
@@ -177,7 +231,7 @@ class ConnThread (threading.Thread):
                     sgSend(self.socket, self.identity)
                 elif dataArgs[0] == RG_KEYWORD:
                     # Perform rg operations
-                    self.socket.send((RG_KEYWORD + " " + EOM).encode("UTF-8"))
+                    rgSend(self.socket, self.identity, dataArgs)
                 elif dataArgs[0] == LOGOUT_KEYWORD:
                     # Perform logout operations
                     self.socket.send((LOGOUT_KEYWORD + LOGOUT_SND + EOM).encode("UTF-8"))
