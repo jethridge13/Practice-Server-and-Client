@@ -18,6 +18,7 @@ RG_KEYWORD = "RG"
 LOGOUT_KEYWORD = "LOGOUT"
 SD_KEYWORD = "SD"
 ERROR_KEYWORD = "ERROR"
+POST_KEYWORD = "POST"
 
 AG_DEFAULT = 5
 SG_DEFAULT = 5
@@ -106,6 +107,71 @@ def unsub(groups, dataArgs):
     subFile.close()
 
 
+# This is a helper method for createPost(). It detects when the user is finished composing their message.
+def EOPFind(msg):
+    for i in range(len(msg) - 2):
+        if len(msg[i]) == 0 and msg[i+1] == "." and len(msg[i+2]) == 0:
+            return True
+    return False
+
+
+# This method is used when creating a post to send to the server
+def createPost(gname):
+    print("PostMode")
+    messageDone = False
+    fullMessage = []
+    title = input(str(userId) + "(Enter title)>>> ")
+    while not messageDone:
+        stdin = input(str(userId) + "(Compose Post)>>> ")
+        if stdin == "/help":
+            printHelp()
+        else:
+            fullMessage.append(stdin)
+            messageDone = EOPFind(fullMessage)
+    fullMessage.pop()
+    fullMessage.pop()
+    fullMessage.pop()
+    print("Title: " + title)
+    print("Content: ")
+    for i in fullMessage:
+        print(i)
+    print("Submit this message?")
+    userResponded = False
+    userResponse = ""
+    while not userResponded:
+        answer = input(str(userId) + "(Y or N)>>> ")
+        if answer == "Y" or answer == "N":
+            userResponse = answer
+            userResponded = True
+        else:
+            print("Unrecognized response")
+    if userResponse == "Y":
+        print("Submitting message...")
+        #TODO Message submission here
+    else:
+        print("Message not submitted.")
+
+
+# This method is used to view a given post from rg mode
+#TODO There are a few formatting bugs based on how the message is decoded. For example, apostrophes disappear.
+def viewPost(dataArgs, gname):
+    #   0 - RG_KEYWORD
+    #   1 - Number of message
+    #   2 - Name of file
+    #   3 - Date, in milliseconds, the post was created
+    #   4 - Author of the post
+    #   5 - Title of post
+    #   6 - Content of post
+    #   n - EOM
+    dateOfPost = datetime.datetime.fromtimestamp(int(dataArgs[3]))
+    print("Group: " + gname)
+    print("Subject: " + dataArgs[5])
+    print("Author: " + dataArgs[4])
+    print("Date: " + str(dateOfPost))
+    for i in range(6, len(dataArgs)-1):
+        print(dataArgs[i])
+
+
 # This function handles the implementation of the ag command. It uses the submethods subscribe() and unsub()
 def ag(n):
     clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
@@ -150,32 +216,6 @@ def ag(n):
                 else:
                     print("Unsupported operation in ag mode.")
     print("Exiting AG Mode")
-
-# This is a helper method for createPost(). It detects when the user is finished composing their message.
-def EOPFind(msg):
-    for i in range(len(msg) - 2):
-        if len(msg[i]) == 0 and msg[i+1] == "." and len(msg[i+2]) == 0:
-            return True
-    return False
-
-# This method is used when creating a post to send to the server
-#TODO The post can be created. Now make it be sent to the server. Also maybe consider adding in a help option from within post mode.
-def createPost(gname):
-    print("PostMode")
-    messageDone = False
-    fullMessage = []
-    title = input(str(userId) + "(Enter title)>>> ")
-    while(not messageDone):
-        stdin = input(str(userId) + "(Compose Post)>>> ")
-        fullMessage.append(stdin)
-        messageDone = EOPFind(fullMessage)
-    fullMessage.pop()
-    fullMessage.pop()
-    fullMessage.pop()
-    print("Title: " + title)
-    print("Content: ")
-    for i in fullMessage:
-        print(i)
 
 
 # This method handles the implementation of sg. It uses the submethod unsub()
@@ -230,6 +270,9 @@ def sg(n):
 # This method handles the implementation of rg, which is "read group"
 def rg(gname, n):
     gname = str(gname)
+    if gname not in subGroups:
+        print("You are not subscribed to " + gname)
+        return
     clientSocket.send((RG_KEYWORD + " " + gname + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
     if dataArgs[0] == RG_KEYWORD:
@@ -283,10 +326,12 @@ def rg(gname, n):
                     #TODO Mark post as read mode
                 elif userInput[0] == "p":
                     createPost(gname)
-                    #TODO Post mode
-                elif userInput[0].isDigit():
-                    print("View post")
-                    #TODO View post mode
+                elif userInput[0].isdigit():
+                    post = int(userInput[0])
+                    if post > len(allPosts) or post < 1:
+                        print("That is an unacceptable post number.")
+                    else:
+                        viewPost(allPosts[post - 1], gname)
                 else:
                     print("Unsupported operation in rg mode.")
 

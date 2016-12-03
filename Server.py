@@ -26,6 +26,7 @@ RG_KEYWORD = "RG"
 LOGOUT_KEYWORD = "LOGOUT"
 ERROR_KEYWORD = "ERROR"
 SD_KEYWORD = "SD"
+POST_KEYWORD = "POST"
 
 LOGOUT_SND = " 'Logging you out from the server.' "
 NOCMD_SND = " 0 'That is not a recognized command.' "
@@ -84,6 +85,19 @@ os.stat_float_times(False)
 
 
 # ***Helper methods start here***
+
+# This method receives data until an EOM is found.
+def receiveData(socket):
+    dataArgs = []
+    while shlex.split(EOM)[0] not in dataArgs:
+        dataRcv = socket.recv(1024)
+        dataRcv = dataRcv.decode()
+        data = shlex.split(dataRcv)
+        # Append the arguments to dataArgs
+        # This way, it will keep accepting arguments until an EOM is found
+        for i in data:
+            dataArgs.append(i)
+    return dataArgs
 
 
 # This method removes a thread from the array of threads
@@ -179,6 +193,20 @@ def rgSend(socket, identity, dataArgs):
         print("Unknown group, '" + gname + "' requested from " + identity)
 
 
+# This method is called when a user submits a new post to the server.
+# It takes that information and saves the post to the system.
+def newPost(dataArgs, identity):
+    # dataArgs array setup:
+    # 0 - POST_KEYWORD
+    # 1 - Group
+    # 2 - Author name
+    # 3 - Title
+    # 4-(n-1) - Content
+    # n - EOM
+    print("New post received from " + identity)
+    print(dataArgs)
+
+
 # This method safely quits the server, closing all open files, threads, and such.
 def quitServer():
     print("Quitting server!")
@@ -210,20 +238,8 @@ class ConnThread (threading.Thread):
         keepRunning = True
         try:
             while(keepRunning):
-                dataArgs = []
-
-                # Receive data until an EOM is found
-                while shlex.split(EOM)[0] not in dataArgs:
-                    dataRcv = self.socket.recv(1024)
-                    dataRcv = dataRcv.decode()
-                    # Split the arguments, keeping quoted arguments together
-                    data = shlex.split(dataRcv)
-                    # Append the arguments to dataArgs
-                    # This way, it will keep accepting arguments until an EOM is found
-                    for i in data:
-                        dataArgs.append(i)
-
-                # EOM found, search for arguments
+                dataArgs = receiveData(self.socket)
+                # Search for arguments
                 if dataArgs[0] == LOGIN_KEYWORD:
                     # Perform login operations
                     clientLogin(self.socket, self.identity, dataArgs)
@@ -248,6 +264,9 @@ class ConnThread (threading.Thread):
                     # If this stays in, it must be password protected
                     keepRunning = False
                     quitServer()
+                elif dataArgs[0] == POST_KEYWORD:
+                    # User has submitted a new post
+                    newPost(dataArgs, self.idtentity)
                 else:
                     # Print non-recognized keyword
                     self.socket.send(ERROR_KEYWORD + NOCMD_SND + EOM)
