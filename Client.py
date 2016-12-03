@@ -168,8 +168,25 @@ def viewPost(dataArgs, gname):
     print("Subject: " + dataArgs[5])
     print("Author: " + dataArgs[4])
     print("Date: " + str(dateOfPost))
-    for i in range(6, len(dataArgs)-1):
-        print(dataArgs[i])
+    readStart = 6
+    readEnd = 11
+    if readEnd > len(dataArgs)-1:
+        readEnd = len(dataArgs)-1
+    read = True
+    while(read):
+        for i in range(readStart, readEnd):
+            print(dataArgs[i])
+            if readEnd < len(dataArgs)-1:
+                readStart = readEnd
+                stdin = input(str(userId) + "(View Mode)>>> ")
+                if stdin.isdigit() and int(stdin) > 0:
+                    readEnd = readStart + int(stdin)
+                    if readEnd > len(dataArgs)-1:
+                        readEnd = len(dataArgs)-1
+                elif stdin == "q":
+                    read = False
+            else:
+                read = False
 
 
 # This function handles the implementation of the ag command. It uses the submethods subscribe() and unsub()
