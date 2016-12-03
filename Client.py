@@ -8,6 +8,7 @@ import sys
 import shlex
 import os
 import datetime
+import errno
 
 EOM = "'\r\n\r\n'"
 EOP = "\n.\n"
@@ -30,6 +31,7 @@ userId = -1
 subGroups = []
 
 SUB_FILE = "subscriptions.txt"
+USER_FILE = ""
 
 def receiveData(socket):
     dataArgs = []
@@ -47,7 +49,7 @@ def receiveData(socket):
 def printHelp():
     print("Help - Supported Commands: ")
     print("login <#> - Takes one argument, your user ID. Will log you into the server to access the forum. You must "
-          "login before you can access any of the other commands.")
+          "login before you can access any of the other commands. Your user ID must be only alphanumerics.")
     print("help - Displays this help menu.")
     print("ag [<#>] - Has one optional argument. Returns a list of all existing discussion groups, N groups at a time. "
           "If the argument is not provided, a default value of " + str(AG_DEFAULT) + " will be used. When in ag mode, "
@@ -82,12 +84,18 @@ def printHelp():
 # Takes two lists, groups and dataArgs. groups is the list of groups to subscribe to. dataArgs is the list of all groups
 def subscribe(groups, dataArgs):
     for i in groups:
-        if dataArgs[int(i) - 1] in subGroups:
-            print("You are already subscribed to " + str(dataArgs[int(i) - 1]))
+        groupName = dataArgs[int(i) - 1]
+        if groupName in subGroups:
+            print("You are already subscribed to " + str(groupName))
         else:
-            subGroups.append(str(dataArgs[int(i) - 1]))
+            subGroups.append(str(groupName))
+            try:
+                os.makedirs(USER_FILE + groupName)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
             print("Subscribed to " + str(dataArgs[int(i) - 1]))
-    subFile = open(SUB_FILE, "w")
+    subFile = open(USER_FILE + SUB_FILE, "w")
     for i in subGroups:
         subFile.write(i + "\n")
     subFile.close()
@@ -98,10 +106,10 @@ def unsub(groups, dataArgs):
     for i in groups:
         if dataArgs[int(i) - 1] in subGroups:
             subGroups.remove(str(dataArgs[int(i) - 1]))
-            print("Unsubscribed to " + str(i))
+            print("Unsubscribed to " + str(dataArgs[int(i) - 1]))
         else:
             print("You are not subscribed to " + str(dataArgs[int(i) - 1]))
-    subFile = open(SUB_FILE, "w")
+    subFile = open(USER_FILE + SUB_FILE, "w")
     for i in subGroups:
         subFile.write(i + "\n")
     subFile.close()
@@ -152,6 +160,29 @@ def createPost(gname):
         print("Message not submitted.")
 
 
+def markPostAsRead(dataArgs, gname):
+    # dataArgs format:
+    #   0 - RG_KEYWORD
+    #   1 - Number of message
+    #   2 - Name of file
+    #   3 - Date, in milliseconds, the post was created
+    #   4 - Author of the post
+    #   5 - Title of post
+    #   6 - Content of post
+    #   n - EOM
+    # Add post to list of viewed posts along with some identifying information
+    dateOfPost = datetime.datetime.fromtimestamp(int(dataArgs[3]))
+    if os.path.exists(USER_FILE + gname + "/" + dataArgs[2]):
+        print("File already read")
+    else:
+        f = open(USER_FILE + gname + "/" + dataArgs[2], "w+")
+        f.write("Group: " + gname)
+        f.write("\nSubject: " + dataArgs[5])
+        f.write("\nAuthor: " + dataArgs[4])
+        f.write("\nDate: " + str(dateOfPost))
+        f.close()
+
+
 # This method is used to view a given post from rg mode
 #TODO There are a few formatting bugs based on how the message is decoded. For example, apostrophes disappear.
 def viewPost(dataArgs, gname):
@@ -164,6 +195,8 @@ def viewPost(dataArgs, gname):
     #   6 - Content of post
     #   n - EOM
     dateOfPost = datetime.datetime.fromtimestamp(int(dataArgs[3]))
+    markPostAsRead(dataArgs, gname)
+    # Print the post to the user
     print("Group: " + gname)
     print("Subject: " + dataArgs[5])
     print("Author: " + dataArgs[4])
@@ -193,7 +226,6 @@ def viewPost(dataArgs, gname):
 def ag(n):
     clientSocket.send((AG_KEYWORD + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
-    groupsLeft = 0
     currentMaxGroup = 2
     if dataArgs[0] == AG_KEYWORD:
         groupsLeft = int(dataArgs[1])
@@ -236,10 +268,12 @@ def ag(n):
 
 
 # This method handles the implementation of sg. It uses the submethod unsub()
-#TODO Add in number of new posts
 def sg(n):
     clientSocket.send((SG_KEYWORD + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
+    dataArgs1 = dataArgs[:dataArgs.index("-")]
+    groupPosts = dataArgs[dataArgs.index("-")+1:len(dataArgs)-1]
+    dataArgs = dataArgs1
     currentMaxGroup = 0
     if dataArgs[0] == SG_KEYWORD:
         groupsLeft = len(subGroups)
@@ -251,7 +285,12 @@ def sg(n):
 
             # Iterate through the list, showing n groups at a time until no more groups are found
             for i in range(currentMaxGroup, indexEnd):
-                print(str(i + 1) + ". \t\t" + subGroups[i])
+                seenPosts = len(os.listdir(USER_FILE + str(subGroups[i])))
+                newPosts = int(groupPosts[dataArgs.index(subGroups[i])-2]) - seenPosts
+                if newPosts == 0:
+                   print(str(i + 1) + ". \t\t" + subGroups[i])
+                else:
+                    print(str(i + 1) + ". \t" + str(newPosts) +"\t" + subGroups[i])
             currentMaxGroup = currentMaxGroup + n
             groupsLeft = groupsLeft - n
             nextSequence = False
@@ -339,8 +378,11 @@ def rg(gname, n):
                 elif userInput[0] == "help":
                     printHelp()
                 elif userInput[0] == "r":
-                    print("Mark post as read")
-                    #TODO Mark post as read mode
+                    if userInput[1].isdigit() and int(userInput[1]) > 1 and int(userInput[1]) < len(allPosts):
+                        post = int(userInput[1])
+                        markPostAsRead(allPosts[post - 1], gname)
+                    else:
+                        print("That is an unacceptable post to mark as read.")
                 elif userInput[0] == "p":
                     createPost(gname)
                 elif userInput[0].isdigit():
@@ -401,14 +443,27 @@ while keepRunning:
                         print("Login successful! Welcome user " + str(dataArgs[1]))
                         loggedIn = True
                         userId = dataArgs[1]
-                        if os.path.exists(SUB_FILE):
-                            subFile = open(SUB_FILE, "r")
+                        USER_FILE = userId + "/"
+                        try:
+                            os.makedirs(userId)
+                        except OSError as e:
+                            if e.errno != errno.EEXIST:
+                                raise
+                        if os.path.exists(USER_FILE + SUB_FILE):
+                            subFile = open(USER_FILE + SUB_FILE, "r")
                         else:
-                            subFile = open(SUB_FILE, "w+")
+                            subFile = open(USER_FILE + SUB_FILE, "w+")
                         for i in subFile:
                             group = i.rstrip()
                             subGroups.append(group)
+                            try:
+                                os.makedirs(USER_FILE + group)
+                            except OSError as e:
+                                if e.errno != errno.EEXIST:
+                                    raise
                         subFile.close()
+                    else:
+                        print("Login failed.")
         elif userInput[0] == "help":
             printHelp()
         else:

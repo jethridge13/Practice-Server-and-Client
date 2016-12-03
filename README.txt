@@ -1,7 +1,7 @@
 ***USAGE***:
 
 login <#> - Takes one argument, your user ID. Will log you into the server to access the forum. You must login before
-you can access any of the other commands.
+you can access any of the other commands. Your user ID must be only alphanumerics.
 help - Displays this help menu.
 ag [<#>] - Has one optional argument. Returns a list of all existing discussion groups, N groups at a time. If the
 argument is not provided, a default value of 5 will be used. When in ag mode,  the following subcommands are available.
@@ -77,4 +77,7 @@ Server files:
     users.txt
     groups.txt
 Client files:
-    subscriptions.txt
+    Client files are stored in a folder that is named after their userId. This is why userIds can only be named with
+    numbers and characters.
+    Files that are stored in the user folder:
+    subscription.txt

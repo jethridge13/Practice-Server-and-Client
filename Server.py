@@ -14,6 +14,7 @@ import shlex
 import os
 import sys
 import errno
+import re
 
 DEFAULT_PORT = 9966
 
@@ -113,7 +114,7 @@ def removeThread(threadID):
 # This is a method which will handle a client logging in to the server
 def clientLogin(socket, identity, args):
     print("Login received from " + identity)
-    if (args[1].isdigit()) and int(args[1]) == -1:
+    if ((args[1].isdigit()) and int(args[1]) == -1) or not re.match("^[\w\d]*$",args[1]):
         print("Invalid login from " + identity)
         socket.send((ERROR_KEYWORD + " 1 'Login invalid' " + EOM).encode("UTF-8"))
         return
@@ -145,11 +146,17 @@ def agSend(socket, identity):
 
 
 # This method handles the sg functionality.
-# TODO This needs to be updated at some point for new post functionality
 def sgSend(socket, identity):
     socket.send((SG_KEYWORD + " ").encode("UTF-8"))
     socket.send((str(len(groups)) + " ").encode("UTF-8"))
+    groupPosts = []
     for i in groups:
+        allFiles = os.listdir(GROUPS_FOLDER + "/" + i)
+        numberOfFiles = str(len(allFiles))
+        groupPosts.append(numberOfFiles)
+        socket.send((i + " ").encode("UTF-8"))
+    socket.send("- ".encode("UTF-8"))
+    for i in groupPosts:
         socket.send((i + " ").encode("UTF-8"))
     socket.send((EOM).encode("UTF-8"))
     print("Sent all groups to " + identity + " for use with sg.")
