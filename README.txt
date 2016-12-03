@@ -56,15 +56,16 @@ LOGIN sent from the client to the server must include the userID as a second arg
 RG Protocol
 RG, since it has the most server functionality, has its own protocol for sending discussion posts to the client. When
 the client sends an RG request, the server will respond with the RG keyword, followed by the number of total posts for
-the group. The server will then send a message as follows: "RG_KEYWORD N FILE.TXT DATE CONTENTS EOM" where N is the
-number of the post starting at 1 and going to the max number of discussion posts, DATE is the date the file was created,
- and FILE.TXT is the name of the file. CONTENTS is the content of the file, which can be sent across several messages
- based on the size of the post.
+the group. The server will then send a message as follows: "RG_KEYWORD N FILE.TXT DATE AUTHOR TITLE CONTENTS EOM" where
+N is the number of the post starting at 1 and going to the max number of discussion posts, DATE is the date the file was
+ created, AUTHOR is the creator of the post, TITLE is the title, and FILE.TXT is the name of the file. CONTENTS is the
+ content of the file, which can be sent across several messages based on the size of the post.
 
 If the ERROR keyword is sent from the server to the client it will be accompanied by an error code number. Here is a
 list of all error numbers and what they mean:
 0 - Command not found
 1 - Login invalid
+10 - When using the RG command, group not found
 
 
 

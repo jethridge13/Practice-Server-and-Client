@@ -162,6 +162,10 @@ def rgSend(socket, identity, dataArgs):
             i += 1
             socket.send((RG_KEYWORD + " " + str(i) + " " + file + " " + str(mTime) + " ").encode("UTF-8"))
             content = []
+            line = activeFile.readline()
+            tuple = line.rpartition("-")
+            socket.send(str(tuple[2]).encode("UTF-8"))
+            content.append(str(tuple[0]))
             for line in activeFile:
                 content.append(line.rstrip())
             for line in content:

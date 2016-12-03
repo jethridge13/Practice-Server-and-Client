@@ -10,6 +10,7 @@ import os
 import datetime
 
 EOM = "'\r\n\r\n'"
+EOP = "\n.\n"
 LOGIN_KEYWORD = "LOGIN"
 AG_KEYWORD = "AG"
 SG_KEYWORD = "SG"
@@ -150,6 +151,32 @@ def ag(n):
                     print("Unsupported operation in ag mode.")
     print("Exiting AG Mode")
 
+# This is a helper method for createPost(). It detects when the user is finished composing their message.
+def EOPFind(msg):
+    for i in range(len(msg) - 2):
+        if len(msg[i]) == 0 and msg[i+1] == "." and len(msg[i+2]) == 0:
+            return True
+    return False
+
+# This method is used when creating a post to send to the server
+#TODO The post can be created. Now make it be sent to the server. Also maybe consider adding in a help option from within post mode.
+def createPost(gname):
+    print("PostMode")
+    messageDone = False
+    fullMessage = []
+    title = input(str(userId) + "(Enter title)>>> ")
+    while(not messageDone):
+        stdin = input(str(userId) + "(Compose Post)>>> ")
+        fullMessage.append(stdin)
+        messageDone = EOPFind(fullMessage)
+    fullMessage.pop()
+    fullMessage.pop()
+    fullMessage.pop()
+    print("Title: " + title)
+    print("Content: ")
+    for i in fullMessage:
+        print(i)
+
 
 # This method handles the implementation of sg. It uses the submethod unsub()
 #TODO Add in number of new posts
@@ -201,7 +228,6 @@ def sg(n):
     print("Exiting SG Mode")
 
 # This method handles the implementation of rg, which is "read group"
-#TODO Fix a number of things when displaying the post information. Right now it has too many newlines and occasionally displays the author when it shouldn't.
 def rg(gname, n):
     gname = str(gname)
     clientSocket.send((RG_KEYWORD + " " + gname + " " + EOM).encode("UTF-8"))
@@ -216,13 +242,16 @@ def rg(gname, n):
         for i in range(totalPosts):
             dataArgs = receiveData(clientSocket)
             allPosts.append(dataArgs)
-        print(allPosts)
         # Entering rg mode here
         # For use in this loop:
         #   0 - RG_KEYWORD
         #   1 - Number of message
         #   2 - Name of file
-        #   3 - Content of file (first line is title)
+        #   3 - Date, in milliseconds, the post was created
+        #   4 - Author of the post
+        #   5 - Title of post
+        #   6 - Content of post
+        #   7 - EOM
         groupsLeft = len(allPosts)
         currentMaxGroup = 0
         while(groupsLeft > 0):
@@ -233,8 +262,9 @@ def rg(gname, n):
 
             # Iterate through the list, showing n groups at a time until no more groups are found
             for i in range(currentMaxGroup, indexEnd):
+                #TODO Modify the date so it looks nicer
                 dateOfPost = datetime.datetime.fromtimestamp(int(allPosts[i][3]))
-                print(str(i + 1) + ". \t\t" + str(dateOfPost) + "\t" + str(allPosts[i][4]))
+                print(str(i + 1) + ". \t\t" + str(dateOfPost) + "\t" + str(allPosts[i][5]))
             currentMaxGroup = currentMaxGroup + n
             groupsLeft = groupsLeft - n
             nextSequence = False
@@ -252,8 +282,11 @@ def rg(gname, n):
                     print("Mark post as read")
                     #TODO Mark post as read mode
                 elif userInput[0] == "p":
-                    print("Post mode")
+                    createPost(gname)
                     #TODO Post mode
+                elif userInput[0].isDigit():
+                    print("View post")
+                    #TODO View post mode
                 else:
                     print("Unsupported operation in rg mode.")
 
