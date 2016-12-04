@@ -210,9 +210,13 @@ def newPost(dataArgs, identity):
     # 3 - Title
     # 4-(n-1) - Content
     # n - EOM
-    #TODO Write the post to the appropriate group and save it
     print("New post received from " + identity)
-    print(dataArgs)
+    filePath = GROUPS_FOLDER + "/" + dataArgs[1]
+    numberPosts = len(os.listdir(filePath))
+    f = open(filePath + "/" + str(numberPosts) + ".txt", "w+")
+    f.write(dataArgs[3] + "-" + dataArgs[2] + "\n\n")
+    f.write(dataArgs[4])
+    f.close()
 
 
 # This method safely quits the server, closing all open files, threads, and such.

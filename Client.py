@@ -124,6 +124,7 @@ def EOPFind(msg):
 
 
 # This method is used when creating a post to send to the server
+#TODO When a post is sent in it isn't marked as read yet. Potentially fix? Maybe? I don't know.
 def createPost(gname):
     print("PostMode")
     messageDone = False
