@@ -15,6 +15,7 @@ import os
 import sys
 import errno
 import re
+import time
 
 DEFAULT_PORT = 9966
 
@@ -175,6 +176,7 @@ def rgSend(socket, identity, dataArgs):
         # overall to send.
         allFiles = os.listdir(activeFolder)
         socket.send((RG_KEYWORD + " " + str(len(allFiles)) + " " + EOM).encode("UTF-8"))
+        time.sleep(0.5)
         i = 0
         for file in allFiles:
             activeFilePath = activeFolder + "/" + file

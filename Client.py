@@ -329,6 +329,7 @@ def sg(n):
     print("Exiting SG Mode")
 
 # This method handles the implementation of rg, which is "read group"
+#TODO Mark if a post is new or not. Forgot about that, oops.
 def rg(gname, n):
     gname = str(gname)
     if gname not in subGroups:
@@ -336,6 +337,7 @@ def rg(gname, n):
         return
     clientSocket.send((RG_KEYWORD + " " + gname + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
+    print(dataArgs)
     if dataArgs[0] == RG_KEYWORD:
         print(gname + " found!")
         totalPosts = dataArgs[1]
