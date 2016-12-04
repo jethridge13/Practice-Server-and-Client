@@ -329,7 +329,6 @@ def sg(n):
     print("Exiting SG Mode")
 
 # This method handles the implementation of rg, which is "read group"
-#TODO Mark if a post is new or not. Forgot about that, oops.
 def rg(gname, n):
     gname = str(gname)
     if gname not in subGroups:
@@ -370,7 +369,10 @@ def rg(gname, n):
             for i in range(currentMaxGroup, indexEnd):
                 #TODO Modify the date so it looks nicer
                 dateOfPost = datetime.datetime.fromtimestamp(int(allPosts[i][3]))
-                print(str(i + 1) + ". \t\t" + str(dateOfPost) + "\t" + str(allPosts[i][5]))
+                if os.path.exists(USER_FILE + gname + "/" + allPosts[i][2]):
+                    print(str(i + 1) + ". \t\t" + str(dateOfPost) + "\t" + str(allPosts[i][5]))
+                else:
+                    print(str(i + 1) + ". \tN\t" + str(dateOfPost) + "\t" + str(allPosts[i][5]))
             currentMaxGroup = currentMaxGroup + n
             groupsLeft = groupsLeft - n
             nextSequence = False

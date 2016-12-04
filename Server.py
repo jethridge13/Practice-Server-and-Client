@@ -38,6 +38,9 @@ USER_FILE = "users.txt"
 GROUP_FILE = "groups.txt"
 GROUPS_FOLDER = "groups"
 
+# This is a hacky way of making sure linux doesn't bug out in rg mode because reasons
+RG_DELAY = 0.1
+
 serverRunning = False
 
 # ***Persistence functionality starts here***
@@ -176,7 +179,7 @@ def rgSend(socket, identity, dataArgs):
         # overall to send.
         allFiles = os.listdir(activeFolder)
         socket.send((RG_KEYWORD + " " + str(len(allFiles)) + " " + EOM).encode("UTF-8"))
-        time.sleep(0.5)
+        time.sleep(RG_DELAY)
         i = 0
         for file in allFiles:
             activeFilePath = activeFolder + "/" + file
