@@ -18,7 +18,7 @@ import re
 
 DEFAULT_PORT = 9966
 
-EOM = "'\r\n\r\n'"
+EOM = "\"\r\n\r\n\""
 
 LOGIN_KEYWORD = "LOGIN"
 AG_KEYWORD = "AG"
@@ -190,7 +190,7 @@ def rgSend(socket, identity, dataArgs):
             for line in activeFile:
                 content.append(line.rstrip())
             for line in content:
-                socket.send(("\'" + line + "\'").encode("UTF-8"))
+                socket.send(("\"" + line + "\"").encode("UTF-8"))
             socket.send(" ".encode("UTF-8"))
             socket.send(EOM.encode("UTF-8"))
             activeFile.close()
@@ -210,6 +210,7 @@ def newPost(dataArgs, identity):
     # 3 - Title
     # 4-(n-1) - Content
     # n - EOM
+    #TODO Write the post to the appropriate group and save it
     print("New post received from " + identity)
     print(dataArgs)
 
@@ -273,7 +274,7 @@ class ConnThread (threading.Thread):
                     quitServer()
                 elif dataArgs[0] == POST_KEYWORD:
                     # User has submitted a new post
-                    newPost(dataArgs, self.idtentity)
+                    newPost(dataArgs, self.identity)
                 else:
                     # Print non-recognized keyword
                     self.socket.send(ERROR_KEYWORD + NOCMD_SND + EOM)

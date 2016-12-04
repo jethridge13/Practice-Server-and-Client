@@ -10,7 +10,7 @@ import os
 import datetime
 import errno
 
-EOM = "'\r\n\r\n'"
+EOM = "\"\r\n\r\n\""
 EOP = "\n.\n"
 LOGIN_KEYWORD = "LOGIN"
 AG_KEYWORD = "AG"
@@ -155,7 +155,12 @@ def createPost(gname):
             print("Unrecognized response")
     if userResponse == "Y":
         print("Submitting message...")
-        #TODO Message submission here
+        clientSocket.send((POST_KEYWORD + " " + gname + " " + userId + " " + title + " ").encode("UTF-8"))
+        clientSocket.send("\"".encode("UTF-8"))
+        for i in fullMessage:
+            clientSocket.send(i.encode("UTF-8"))
+        clientSocket.send("\"".encode("UTF-8"))
+        clientSocket.send((" " + EOM).encode("UTF-8"))
     else:
         print("Message not submitted.")
 
@@ -184,7 +189,6 @@ def markPostAsRead(dataArgs, gname):
 
 
 # This method is used to view a given post from rg mode
-#TODO There are a few formatting bugs based on how the message is decoded. For example, apostrophes disappear.
 def viewPost(dataArgs, gname):
     #   0 - RG_KEYWORD
     #   1 - Number of message
