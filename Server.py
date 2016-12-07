@@ -39,9 +39,10 @@ GROUP_FILE = "groups.txt"
 GROUPS_FOLDER = "groups"
 
 # This is a hacky way of making sure linux doesn't bug out in rg mode because reasons
-RG_DELAY = 0.1
+RG_DELAY = 0.001
 
 serverRunning = False
+loginThreadRunning = False
 
 # ***Persistence functionality starts here***
 # Users
@@ -195,10 +196,14 @@ def rgSend(socket, identity, dataArgs):
             for line in activeFile:
                 content.append(line.rstrip())
             for line in content:
-                socket.send(("\"" + line + "\"").encode("UTF-8"))
+                if len(line) == 0:
+                    socket.send("\n".encode("UTF-8"))
+                else:
+                    socket.send(("\"" + line + "\"").encode("UTF-8"))
             socket.send(" ".encode("UTF-8"))
             socket.send(EOM.encode("UTF-8"))
             activeFile.close()
+            time.sleep(RG_DELAY)
     else:
         # Group not found, send GNF error
         socket.send((ERROR_KEYWORD + RGGNF_SND + EOM).encode("UTF-8"))
@@ -231,7 +236,8 @@ def quitServer():
         print("Closing " + i.identity)
         i.socket.shutdown(SHUT_RDWR)
         i.socket.close()
-    loginThread.serverSocket.close()
+    if loginThreadRunning:
+        loginThread.serverSocket.close()
     sys.exit(0)
 
 
@@ -352,5 +358,9 @@ print("Listening on port " + str(serverPort))
 # Create a thread for logging in
 loginThread = LoginThread(serverSocket)
 loginThread.start()
+loginThreadRunning = True
 # Wait for the login thread to end
-loginThread.join()
+try:
+    loginThread.join()
+except KeyboardInterrupt:
+    quitServer()

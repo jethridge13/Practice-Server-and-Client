@@ -36,7 +36,10 @@ USER_FILE = ""
 def receiveData(socket):
     dataArgs = []
     while shlex.split(EOM)[0] not in dataArgs:
-        dataRcv = socket.recv(1024)
+        try:
+            dataRcv = socket.recv(1024)
+        except:
+            print("Timed out")
         dataRcv = dataRcv.decode()
         data = shlex.split(dataRcv)
         # Append the arguments to dataArgs
@@ -156,7 +159,7 @@ def createPost(gname):
             print("Unrecognized response")
     if userResponse == "Y":
         print("Submitting message...")
-        clientSocket.send((POST_KEYWORD + " " + gname + " " + userId + " " + title + " ").encode("UTF-8"))
+        clientSocket.send((POST_KEYWORD + " " + gname + " " + userId + " '" + title + "' ").encode("UTF-8"))
         clientSocket.send("\"".encode("UTF-8"))
         for i in fullMessage:
             clientSocket.send(i.encode("UTF-8"))
@@ -336,7 +339,6 @@ def rg(gname, n):
         return
     clientSocket.send((RG_KEYWORD + " " + gname + " " + EOM).encode("UTF-8"))
     dataArgs = receiveData(clientSocket)
-    print(dataArgs)
     if dataArgs[0] == RG_KEYWORD:
         print(gname + " found!")
         totalPosts = dataArgs[1]
@@ -387,7 +389,7 @@ def rg(gname, n):
                 elif userInput[0] == "help":
                     printHelp()
                 elif userInput[0] == "r":
-                    if userInput[1].isdigit() and int(userInput[1]) > 1 and int(userInput[1]) < len(allPosts):
+                    if userInput[1].isdigit() and int(userInput[1]) >= 1 and int(userInput[1]) <= len(allPosts):
                         post = int(userInput[1])
                         markPostAsRead(allPosts[post - 1], gname)
                     else:
@@ -402,6 +404,7 @@ def rg(gname, n):
                         viewPost(allPosts[post - 1], gname)
                 else:
                     print("Unsupported operation in rg mode.")
+        print("Exiting RG Mode")
 
     elif dataArgs[0] == ERROR_KEYWORD:
         print("Error in finding group.")
@@ -422,6 +425,7 @@ except IndexError:
 
 # Attempt to connect to given address
 clientSocket = socket(AF_INET, SOCK_STREAM)
+clientSocket.settimeout(1)
 print("Attempting to connect to " + str(host) + ":" + str(port))
 clientSocket.connect((host, port))
 
