@@ -1,4 +1,30 @@
+Group 11
+Joshua Ethridge
+Rahul Verma
+Harrison Termotto
+
+
+
+***NECESSARY FILES***
+
+Both the Server and Client are programmed using Python 3. This WILL NOT work with Python 2.
+
+The only file that the server absolutely needs to run is "Server.py", but for there to be any functionality with the
+server, a "groups.txt" files must also be included. If the Server.py file is run without the groups.txt file, the server
+will still startup but will issue a warning that it's basically useless. The server creates the "groups" subfolder from
+the given groups.txt file. The server will also create a "users.txt" file to keep track of the clients that connect.
+
+The only file that the client absolutely needs is "Client.py". Everything else the client needs is created as it runs.
+
+See the PERSISTENCE/IO section for more details.
+
+
+
 ***USAGE***:
+
+Launching the server:
+The server requires no special arguments to run. It can be run just the same as any other Python 3 script. It uses a
+hardcoded port of 9966.
 
 login <#> - Takes one argument, your user ID. Will log you into the server to access the forum. You must login before
 you can access any of the other commands. Your user ID must be only alphanumerics.
@@ -42,6 +68,7 @@ RG
 LOGOUT
 ERROR
 SD
+POST
 The client and server communicate as follows:
 1. A keyword is sent, followed by a space. On both ends, the messages are parsed by space, ignoring spaces between
 ''.

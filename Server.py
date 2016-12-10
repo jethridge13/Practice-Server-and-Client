@@ -122,7 +122,7 @@ def clientLogin(socket, identity, args):
     if ((args[1].isdigit()) and int(args[1]) == -1) or not re.match("^[\w\d]*$",args[1]):
         print("Invalid login from " + identity)
         socket.send((ERROR_KEYWORD + " 1 'Login invalid' " + EOM).encode("UTF-8"))
-        return
+        return -1
     userFound = False
     for i in users:
         if i == args[1]:
@@ -138,6 +138,7 @@ def clientLogin(socket, identity, args):
         print("New user found. Added user " + str(args[1]))
     socket.send((LOGIN_KEYWORD + " '" + args[1] + "' " + EOM).encode("UTF-8"))
     print("Valid login from " + identity)
+    return args[1]
 
 
 # This method returns all of the groups to the client that requested it.
@@ -265,7 +266,9 @@ class ConnThread (threading.Thread):
                 # Search for arguments
                 if dataArgs[0] == LOGIN_KEYWORD:
                     # Perform login operations
-                    clientLogin(self.socket, self.identity, dataArgs)
+                    loginStatus = clientLogin(self.socket, self.identity, dataArgs)
+                    if loginStatus != -1:
+                        self.identity = self.identity + "(User: " + loginStatus + ")"
                 elif dataArgs[0] == AG_KEYWORD:
                     # Perform ag operations
                     agSend(self.socket, self.identity)
