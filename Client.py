@@ -132,7 +132,11 @@ def createPost(gname):
     print("PostMode")
     messageDone = False
     fullMessage = []
-    title = input(str(userId) + "(Enter title)>>> ")
+    title = ""
+    while len(title) > 1:
+        title = input(str(userId) + "(Enter title)>>> ")
+        if len(title) <= 1:
+            print("A longer title is required.")
     while not messageDone:
         stdin = input(str(userId) + "(Compose Post)>>> ")
         if stdin == "/help":
@@ -253,7 +257,9 @@ def ag(n):
             groupsLeft = groupsLeft - n
             nextSequence = False
             while(not nextSequence):
-                stdin = input(str(userId) + "(AG Mode)>>> ")
+                stdin = ""
+                while len(stdin) < 1:
+                    stdin = input(str(userId) + "(AG Mode)>>> ")
                 userInput = shlex.split(stdin)
                 if userInput[0] == "s":
                     # Subscribe to group
@@ -303,7 +309,9 @@ def sg(n):
             groupsLeft = groupsLeft - n
             nextSequence = False
             while(not nextSequence):
-                stdin = input(str(userId) + "(SG Mode)>>> ")
+                stdin = ""
+                while len(stdin) < 1:
+                    stdin = input(str(userId) + "(SG Mode)>>> ")
                 userInput = shlex.split(stdin)
                 if userInput[0] == "u":
                     # Unsubscribe to group
@@ -349,6 +357,7 @@ def rg(gname, n):
         for i in range(totalPosts):
             dataArgs = receiveData(clientSocket)
             allPosts.append(dataArgs)
+        allPosts.reverse()
         # Entering rg mode here
         # For use in this loop:
         #   0 - RG_KEYWORD
@@ -379,7 +388,9 @@ def rg(gname, n):
             groupsLeft = groupsLeft - n
             nextSequence = False
             while(not nextSequence):
-                stdin = input(str(userId) + "(RG Mode)>>> ")
+                stdin = ""
+                while len(stdin) < 1:
+                    stdin = input(str(userId) + "(RG Mode)>>> ")
                 userInput = shlex.split(stdin)
                 if userInput[0] == "n":
                     nextSequence = True
