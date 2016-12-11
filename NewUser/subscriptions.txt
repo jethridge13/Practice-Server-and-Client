@@ -1,0 +1,2 @@
+sci.astronomy
+sci.geology

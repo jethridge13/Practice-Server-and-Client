@@ -137,7 +137,7 @@ def clientLogin(socket, identity, args):
         usersLock.release()
         print("New user found. Added user " + str(args[1]))
     socket.send((LOGIN_KEYWORD + " '" + args[1] + "' " + EOM).encode("UTF-8"))
-    print("Valid login from " + identity)
+    print("Valid login from " + identity + "(User: " + args[1] + ")")
     return args[1]
 
 
@@ -235,8 +235,12 @@ def quitServer():
     print("Quitting server!")
     for i in threads:
         print("Closing " + i.identity)
-        i.socket.shutdown(SHUT_RDWR)
-        i.socket.close()
+        try:
+            i.socket.shutdown(SHUT_RDWR)
+            i.socket.close()
+        except:
+            print("Issue closing socket attached to " + i.identity)
+            print("Socket could have disconnected in a very unsafe manner or some other error could have occurred.")
     if loginThreadRunning:
         loginThread.serverSocket.close()
     sys.exit()

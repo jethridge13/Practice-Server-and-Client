@@ -1,0 +1,4 @@
+Group: sci.astronomy
+Subject: Welcome to sci.astronomy!
+Author: Admin
+Date: 2016-12-03 00:14:12

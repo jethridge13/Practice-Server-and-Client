@@ -1,0 +1,2 @@
+comp.lang.c
+comp.lang.python

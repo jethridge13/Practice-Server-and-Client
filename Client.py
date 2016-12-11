@@ -129,13 +129,11 @@ def EOPFind(msg):
 
 
 # This method is used when creating a post to send to the server
-#TODO When a post is sent in it isn't marked as read yet. Potentially fix? Maybe? I don't know.
 def createPost(gname):
-    print("PostMode")
     messageDone = False
     fullMessage = []
     title = ""
-    while len(title) > 1:
+    while len(title) < 1:
         title = input(str(userId) + "(Enter title)>>> ")
         if len(title) <= 1:
             print("A longer title is required.")
@@ -556,10 +554,15 @@ try:
                 printHelp()
 except:
     print("Unexpected error occured.")
-    clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
-    dataArgs = receiveData(clientSocket)
-    if(dataArgs[0] == LOGOUT_KEYWORD):
-        print("Received from server: " + dataArgs[1])
+    # try/catch blocks inside a try/catch block. Much python, such fancy. Wow.
+    try:
+        clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
+        dataArgs = receiveData(clientSocket)
+        if(dataArgs[0] == LOGOUT_KEYWORD):
+            print("Received from server: " + dataArgs[1])
+    except:
+        print("Server unexpectedly closed. Shutting down.")
+
     clientSocket.close()
 if loggedIn:
     clientSocket.close()
