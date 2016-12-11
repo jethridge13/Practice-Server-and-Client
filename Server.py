@@ -239,7 +239,7 @@ def quitServer():
         i.socket.close()
     if loginThreadRunning:
         loginThread.serverSocket.close()
-    sys.exit(0)
+    sys.exit()
 
 
 # ***This is the thread object***

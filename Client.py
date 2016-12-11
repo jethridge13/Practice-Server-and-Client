@@ -25,6 +25,8 @@ AG_DEFAULT = 5
 SG_DEFAULT = 5
 RG_DEFAULT = 5
 
+CONNECT_ATTEMPTS = 5
+
 loggedIn = False
 userId = -1
 
@@ -436,111 +438,128 @@ except IndexError:
 
 # Attempt to connect to given address
 clientSocket = socket(AF_INET, SOCK_STREAM)
-clientSocket.settimeout(1)
+clientSocket.settimeout(3)
 print("Attempting to connect to " + str(host) + ":" + str(port))
-clientSocket.connect((host, port))
-
+i = 1
+connect = False
+while not connect:
+    if i > CONNECT_ATTEMPTS:
+        print("Connection aborted. Exiting program.")
+        sys.exit()
+    try:
+        if i != 1:
+            print("Attempting to connect. Attempt " + str(i) + " of " + str(CONNECT_ATTEMPTS))
+        clientSocket.connect((host, port))
+        connect = True
+    except OSError:
+        print("Connection refused")
+        i += 1
 keepRunning = True
 print("Connection successful!")
-while keepRunning:
-    if loggedIn:
-        stdin = input(str(userId) + ">>> ")
-    else:
-        stdin = input('>>> ')
-    userInput = shlex.split(stdin)
-    if not loggedIn:
-        if userInput[0] == "login":
-            # Login operations
-            if not loggedIn:
-                # Login requires exactly 2 arguments
-                if len(userInput) != 2:
-                    print("Incorrect number of arguments.")
-                    printHelp()
-                else:
-                    print(userInput[1])
-                    clientSocket.send((LOGIN_KEYWORD + " '" + userInput[1] + "' " + EOM).encode("UTF-8"))
+try:
+    while keepRunning:
+        if loggedIn:
+            stdin = input(str(userId) + ">>> ")
+        else:
+            stdin = input('>>> ')
+        userInput = shlex.split(stdin)
+        if not loggedIn:
+            if userInput[0] == "login":
+                # Login operations
+                if not loggedIn:
+                    # Login requires exactly 2 arguments
+                    if len(userInput) != 2:
+                        print("Incorrect number of arguments.")
+                        printHelp()
+                    else:
+                        print(userInput[1])
+                        clientSocket.send((LOGIN_KEYWORD + " '" + userInput[1] + "' " + EOM).encode("UTF-8"))
 
-                    # Receive data until EOM found
-                    dataArgs = receiveData(clientSocket)
+                        # Receive data until EOM found
+                        dataArgs = receiveData(clientSocket)
 
-                    if dataArgs[0] == LOGIN_KEYWORD :
-                        print("Login successful! Welcome user " + str(dataArgs[1]))
-                        loggedIn = True
-                        userId = dataArgs[1]
-                        USER_FILE = userId + "/"
-                        try:
-                            os.makedirs(userId)
-                        except OSError as e:
-                            if e.errno != errno.EEXIST:
-                                raise
-                        if os.path.exists(USER_FILE + SUB_FILE):
-                            subFile = open(USER_FILE + SUB_FILE, "r")
-                        else:
-                            subFile = open(USER_FILE + SUB_FILE, "w+")
-                        for i in subFile:
-                            group = i.rstrip()
-                            subGroups.append(group)
+                        if dataArgs[0] == LOGIN_KEYWORD :
+                            print("Login successful! Welcome user " + str(dataArgs[1]))
+                            loggedIn = True
+                            userId = dataArgs[1]
+                            USER_FILE = userId + "/"
                             try:
-                                os.makedirs(USER_FILE + group)
+                                os.makedirs(userId)
                             except OSError as e:
                                 if e.errno != errno.EEXIST:
                                     raise
-                        subFile.close()
-                    else:
-                        print("Login failed.")
-        elif userInput[0] == "help":
-            printHelp()
+                            if os.path.exists(USER_FILE + SUB_FILE):
+                                subFile = open(USER_FILE + SUB_FILE, "r")
+                            else:
+                                subFile = open(USER_FILE + SUB_FILE, "w+")
+                            for i in subFile:
+                                group = i.rstrip()
+                                subGroups.append(group)
+                                try:
+                                    os.makedirs(USER_FILE + group)
+                                except OSError as e:
+                                    if e.errno != errno.EEXIST:
+                                        raise
+                            subFile.close()
+                        else:
+                            print("Login failed.")
+            elif userInput[0] == "help":
+                printHelp()
+            else:
+                print("Please login before issuing commands.")
+                printHelp()
         else:
-            print("Please login before issuing commands.")
-            printHelp()
-    else:
-        if userInput[0] == "login":
-            print("You are already logged in.")
-            printHelp()
-        elif userInput[0] == "help":
-            printHelp()
-        elif userInput[0] == "ag":
-            if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
-                ag(int(userInput[1]))
-            elif len(userInput) == 1:
-                ag(AG_DEFAULT)
-            else:
-                print("Incorrect usage for ag.")
+            if userInput[0] == "login":
+                print("You are already logged in.")
                 printHelp()
-        elif userInput[0] == "sg":
-            if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
-                sg(int(userInput[1]))
-            elif len(userInput) == 1:
-                sg(SG_DEFAULT)
-            else:
-                print("Incorrect usage for sg.")
+            elif userInput[0] == "help":
                 printHelp()
-        elif userInput[0] == "rg":
-            if len(userInput) == 2:
-                rg(userInput[1], RG_DEFAULT)
-            elif len(userInput) == 3 and int(userInput[2]) > 0:
-                rg(userInput[1], int(userInput[2]))
+            elif userInput[0] == "ag":
+                if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
+                    ag(int(userInput[1]))
+                elif len(userInput) == 1:
+                    ag(AG_DEFAULT)
+                else:
+                    print("Incorrect usage for ag.")
+                    printHelp()
+            elif userInput[0] == "sg":
+                if len(userInput) == 2 and userInput[1].isdigit() and int(userInput[1]) > 0:
+                    sg(int(userInput[1]))
+                elif len(userInput) == 1:
+                    sg(SG_DEFAULT)
+                else:
+                    print("Incorrect usage for sg.")
+                    printHelp()
+            elif userInput[0] == "rg":
+                if len(userInput) == 2:
+                    rg(userInput[1], RG_DEFAULT)
+                elif len(userInput) == 3 and int(userInput[2]) > 0:
+                    rg(userInput[1], int(userInput[2]))
+                else:
+                    print("Incorrect usage for rg.")
+                    printHelp()
+            elif userInput[0] == "logout":
+                print("Logging out from the server...")
+                clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
+                dataArgs = receiveData(clientSocket)
+                if(dataArgs[0] == LOGOUT_KEYWORD):
+                    print("Received from server: " + dataArgs[1])
+                break
+            elif userInput[0] == "EOM":
+                clientSocket.send("'\r\n\r\n'".encode("UTF-8"))
+                rcv = clientSocket.recv(1024)
+                print("Received: " + rcv.decode())
+            elif userInput[0] == "sd":
+                clientSocket.send((SD_KEYWORD + " " + EOM).encode("UTF-8"))
             else:
-                print("Incorrect usage for rg.")
+                print("Unrecognized command.")
                 printHelp()
-        elif userInput[0] == "logout":
-            print("Logging out from the server...")
-            clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
-            dataArgs = receiveData(clientSocket)
-            if(dataArgs[0] == LOGOUT_KEYWORD):
-                print("Received from server: " + dataArgs[1])
-            keepRunning = False
-            break
-        elif userInput[0] == "EOM":
-            clientSocket.send("'\r\n\r\n'".encode("UTF-8"))
-            rcv = clientSocket.recv(1024)
-            print("Received: " + rcv.decode())
-            continue
-        elif userInput[0] == "sd":
-            clientSocket.send((SD_KEYWORD + " " + EOM).encode("UTF-8"))
-        else:
-            print("Unrecognized command.")
-            printHelp()
-
+except:
+    print("Unexpected error occured.")
+    clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
+    dataArgs = receiveData(clientSocket)
+    if(dataArgs[0] == LOGOUT_KEYWORD):
+        print("Received from server: " + dataArgs[1])
+    clientSocket.close()
 if loggedIn:
     clientSocket.close()
