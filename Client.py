@@ -9,6 +9,7 @@ import shlex
 import os
 import datetime
 import errno
+import time
 
 EOM = "\"\r\n\r\n\""
 EOP = "\n.\n"
@@ -24,6 +25,8 @@ POST_KEYWORD = "POST"
 AG_DEFAULT = 5
 SG_DEFAULT = 5
 RG_DEFAULT = 5
+
+RG_DELAY = 0.001
 
 CONNECT_ATTEMPTS = 5
 
@@ -164,10 +167,9 @@ def createPost(gname):
     if userResponse == "Y":
         print("Submitting message...")
         clientSocket.send((POST_KEYWORD + " " + gname + " " + userId + " '" + title + "' ").encode("UTF-8"))
-        clientSocket.send("\"".encode("UTF-8"))
         for i in fullMessage:
-            clientSocket.send(i.encode("UTF-8"))
-        clientSocket.send("\"".encode("UTF-8"))
+            clientSocket.send(("\"" + i + "\n\"").encode("UTF-8"))
+        time.sleep(RG_DELAY)
         clientSocket.send((" " + EOM).encode("UTF-8"))
     else:
         print("Message not submitted.")
@@ -197,7 +199,7 @@ def markPostAsRead(dataArgs, gname):
 
 
 # This method is used to view a given post from rg mode
-def viewPost(dataArgs, gname):
+def viewPost(dataArgs, gname, n):
     #   0 - RG_KEYWORD
     #   1 - Number of message
     #   2 - Name of file
@@ -224,7 +226,7 @@ def viewPost(dataArgs, gname):
             if readEnd < len(dataArgs)-1:
                 readStart = readEnd
                 stdin = input(str(userId) + "(View Mode)>>> ")
-                if stdin.isdigit() and int(stdin) > 0:
+                if stdin == "n":
                     readEnd = readStart + int(stdin)
                     if readEnd > len(dataArgs)-1:
                         readEnd = len(dataArgs)-1
@@ -403,6 +405,11 @@ def rg(gname, n):
                     if userInput[1].isdigit() and int(userInput[1]) >= 1 and int(userInput[1]) <= len(allPosts):
                         post = int(userInput[1])
                         markPostAsRead(allPosts[post - 1], gname)
+                    elif userInput[1][:userInput[1].index("-")].isdigit() and userInput[1][userInput[1].index("-")+1:len(userInput[1])].isdigit():
+                        firstDigit = int(userInput[1][:userInput[1].index("-")])
+                        secondDigit = int(userInput[1][userInput[1].index("-")+1:len(userInput[1])])
+                        for i in range(firstDigit, secondDigit+1):
+                            markPostAsRead(allPosts[i - 1],gname)
                     else:
                         print("That is an unacceptable post to mark as read.")
                 elif userInput[0] == "p":
@@ -412,7 +419,7 @@ def rg(gname, n):
                     if post > len(allPosts) or post < 1:
                         print("That is an unacceptable post number.")
                     else:
-                        viewPost(allPosts[post - 1], gname)
+                        viewPost(allPosts[post - 1], gname, n)
                 else:
                     print("Unsupported operation in rg mode.")
         print("Exiting RG Mode")

@@ -96,7 +96,7 @@ os.stat_float_times(False)
 def receiveData(socket):
     dataArgs = []
     while shlex.split(EOM)[0] not in dataArgs:
-        dataRcv = socket.recv(1024)
+        dataRcv = socket.recv(2048)
         dataRcv = dataRcv.decode()
         data = shlex.split(dataRcv)
         # Append the arguments to dataArgs
@@ -200,7 +200,7 @@ def rgSend(socket, identity, dataArgs):
                 if len(line) == 0:
                     socket.send("\n".encode("UTF-8"))
                 else:
-                    socket.send(("\"" + line + "\"").encode("UTF-8"))
+                    socket.send(("\"" + line + "\n\"").encode("UTF-8"))
             socket.send(" ".encode("UTF-8"))
             socket.send(EOM.encode("UTF-8"))
             activeFile.close()
@@ -226,7 +226,8 @@ def newPost(dataArgs, identity):
     numberPosts = len(os.listdir(filePath))
     f = open(filePath + "/" + str(numberPosts) + ".txt", "w+")
     f.write(dataArgs[3] + "-" + dataArgs[2] + "\n\n")
-    f.write(dataArgs[4])
+    for i in range(4, len(dataArgs)-1):
+        f.write(dataArgs[i])
     f.close()
 
 
