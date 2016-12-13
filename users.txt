@@ -4,3 +4,4 @@ NewUser
 User
 IAskManyQuestions
 lurker
+demoUser

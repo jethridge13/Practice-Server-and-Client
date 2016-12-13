@@ -39,7 +39,7 @@ GROUP_FILE = "groups.txt"
 GROUPS_FOLDER = "groups"
 
 # This is a hacky way of making sure linux doesn't bug out in rg mode because reasons
-RG_DELAY = 0.001
+RG_DELAY = 0.01
 
 serverRunning = False
 loginThreadRunning = False
@@ -188,6 +188,7 @@ def rgSend(socket, identity, dataArgs):
             activeFile = open(activeFilePath, "r")
             mTime = os.path.getmtime(activeFilePath)
             i += 1
+            time.sleep(RG_DELAY)
             socket.send((RG_KEYWORD + " " + str(i) + " " + file + " " + str(mTime) + " ").encode("UTF-8"))
             content = []
             line = activeFile.readline()
@@ -203,6 +204,7 @@ def rgSend(socket, identity, dataArgs):
                     socket.send(("\"" + line + "\n\"").encode("UTF-8"))
             socket.send(" ".encode("UTF-8"))
             socket.send(EOM.encode("UTF-8"))
+            socket.send(" ".encode("UTF-8"))
             activeFile.close()
             time.sleep(RG_DELAY)
     else:

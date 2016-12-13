@@ -358,7 +358,22 @@ def rg(gname, n):
         allPosts = []
         for i in range(totalPosts):
             dataArgs = receiveData(clientSocket)
-            allPosts.append(dataArgs)
+            dataArgs.reverse()
+            reverseArgs = dataArgs[:]
+            dataArgs.reverse()
+            if reverseArgs.index(RG_KEYWORD) == len(reverseArgs) - 1:
+                allPosts.append(dataArgs)
+            else:
+                while reverseArgs.index(RG_KEYWORD) != len(reverseArgs) - 1:
+                    arg = reverseArgs[:reverseArgs.index(RG_KEYWORD)+1]
+                    arg.reverse()
+                    allPosts.insert(0, arg)
+                    reverseArgs = reverseArgs[reverseArgs.index(RG_KEYWORD)+1:]
+                arg = reverseArgs[:]
+                arg.reverse()
+                allPosts.insert(0, arg)
+            if len(allPosts) == totalPosts:
+                break
         allPosts.reverse()
         # Entering rg mode here
         # For use in this loop:
@@ -559,8 +574,9 @@ try:
             else:
                 print("Unrecognized command.")
                 printHelp()
-except:
+except error as e:
     print("Unexpected error occured.")
+    print(e)
     # try/catch blocks inside a try/catch block. Much python, such fancy. Wow.
     try:
         clientSocket.send((LOGOUT_KEYWORD + " " + EOM).encode("UTF-8"))
